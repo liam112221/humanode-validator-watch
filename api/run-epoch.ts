@@ -1,28 +1,379 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, writeJSON } from '../storage/blob';
+import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc';
+
+// Global Constants (will be loaded from config)
+let FIRST_EVER_PHRASE_START_EPOCH = 5450;
+let PHRASE_DURATION_EPOCHS = 84;
+let EPOCH_FAIL_THRESHOLD_SECONDS = 2 * 60 * 60; // 2 jam
+let AVG_BLOCK_TIME_SECONDS = 6;
+
+// State tracking
+let lastKnownNetworkEpoch = -1;
+let currentPhraseNumber = -1;
 
 /**
- * API Endpoint: /api/run-epoch
- * Handles epoch monitoring and metadata updates
- * Logic will be inserted here from original runtime
+ * Calculate phrase number from epoch
+ */
+function calculatePhraseNumber(currentEpoch: number): number {
+  if (currentEpoch < FIRST_EVER_PHRASE_START_EPOCH) return 0;
+  return Math.floor((currentEpoch - FIRST_EVER_PHRASE_START_EPOCH) / PHRASE_DURATION_EPOCHS) + 1;
+}
+
+/**
+ * Get start epoch for a phrase
+ */
+function getStartEpochForPhrase(phraseNumber: number): number {
+  if (phraseNumber < 1) return -1;
+  return FIRST_EVER_PHRASE_START_EPOCH + (phraseNumber - 1) * PHRASE_DURATION_EPOCHS;
+}
+
+/**
+ * Initialize validator phrase epoch data
+ */
+function initializeValidatorPhraseEpochDataForApiHelper(
+  phraseMonitoringData: any,
+  validatorAddress: string,
+  phraseNumber: number,
+  epochToMonitor: number,
+  currentTime: number,
+  initialApiHelperState: string,
+  initialStatusForEpoch: string,
+  lastKnownEpoch: number
+) {
+  if (!validatorAddress || phraseNumber < 1) return;
+
+  if (!phraseMonitoringData[validatorAddress]) {
+    phraseMonitoringData[validatorAddress] = { epochs: {} };
+    console.log(`[${new Date().toISOString()}] Inisialisasi struktur frasa ${phraseNumber} untuk ${validatorAddress}`);
+  }
+
+  const epochData = phraseMonitoringData[validatorAddress].epochs[epochToMonitor];
+  if (epochData && ['PASS_API_HELPER', 'FAIL_API_HELPER', 'NO_DATA'].includes(epochData.status) && epochToMonitor !== lastKnownEpoch) {
+    return;
+  }
+
+  const newEpochData = epochData || {};
+  newEpochData.status = newEpochData.status || initialStatusForEpoch;
+  newEpochData.totalApiHelperInactiveSeconds = newEpochData.totalApiHelperInactiveSeconds || 0;
+  newEpochData.lastApiHelperState = newEpochData.lastApiHelperState || initialApiHelperState;
+  newEpochData.lastApiHelperStateChangeTimestamp = newEpochData.lastApiHelperStateChangeTimestamp || new Date(currentTime).toISOString();
+  newEpochData.firstMonitoredTimestamp = newEpochData.firstMonitoredTimestamp || new Date(currentTime).toISOString();
+
+  if (newEpochData.status !== initialStatusForEpoch && initialStatusForEpoch === 'BERJALAN') {
+    newEpochData.status = 'BERJALAN';
+  }
+
+  phraseMonitoringData[validatorAddress].epochs[epochToMonitor] = newEpochData;
+}
+
+/**
+ * Update API Helper inactive duration
+ */
+function updateApiHelperInactiveDuration(
+  phraseMonitoringData: any,
+  validatorAddress: string,
+  epoch: number,
+  currentTime: number
+) {
+  const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[epoch];
+
+  if (!epochData || !epochData.lastApiHelperStateChangeTimestamp || ['PASS_API_HELPER', 'FAIL_API_HELPER', 'NO_DATA'].includes(epochData.status)) return;
+
+  if (epochData.lastApiHelperState === 'TIDAK_AKTIF_API') {
+    const inactiveDuration = Math.round((currentTime - new Date(epochData.lastApiHelperStateChangeTimestamp).getTime()) / 1000);
+    if (inactiveDuration > 0) {
+      epochData.totalApiHelperInactiveSeconds += inactiveDuration;
+    }
+  }
+  epochData.lastApiHelperStateChangeTimestamp = new Date(currentTime).toISOString();
+}
+
+/**
+ * Handle epoch end - finalize status
+ */
+async function handleApiHelperEpochEnd(
+  phraseMonitoringData: any,
+  finishedEpoch: number,
+  phraseNumberForFinishedEpoch: number
+) {
+  console.log(`[${new Date().toISOString()}] --- Akhir Epoch ${finishedEpoch} Terdeteksi (Frasa ${phraseNumberForFinishedEpoch}) ---`);
+
+  const currentTime = Date.now();
+  let dataWasModified = false;
+
+  const allRelevantValidators = new Set(Object.keys(phraseMonitoringData));
+
+  for (const validatorAddress of allRelevantValidators) {
+    const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[finishedEpoch];
+
+    if (!epochData) {
+      continue;
+    }
+
+    if (['PASS_API_HELPER', 'FAIL_API_HELPER', 'NO_DATA'].includes(epochData.status)) {
+      continue;
+    }
+
+    updateApiHelperInactiveDuration(phraseMonitoringData, validatorAddress, finishedEpoch, currentTime);
+
+    if (epochData.totalApiHelperInactiveSeconds >= EPOCH_FAIL_THRESHOLD_SECONDS) {
+      epochData.status = 'FAIL_API_HELPER';
+      console.log(`[${new Date().toISOString()}] VALIDATOR ${validatorAddress}, Frasa ${phraseNumberForFinishedEpoch}, EPOCH ${finishedEpoch}: STATUS = FAIL (Total tidak aktif: ${epochData.totalApiHelperInactiveSeconds}s)`);
+    } else {
+      epochData.status = 'PASS_API_HELPER';
+      console.log(`[${new Date().toISOString()}] VALIDATOR ${validatorAddress}, Frasa ${phraseNumberForFinishedEpoch}, EPOCH ${finishedEpoch}: STATUS = PASS (Total tidak aktif: ${epochData.totalApiHelperInactiveSeconds}s)`);
+    }
+
+    dataWasModified = true;
+
+    delete epochData.lastApiHelperState;
+    delete epochData.lastApiHelperStateChangeTimestamp;
+  }
+
+  if (dataWasModified && phraseNumberForFinishedEpoch >= 1) {
+    await writeJSON(`data/phrasedata/api_helper_phrase_${phraseNumberForFinishedEpoch}_data.json`, phraseMonitoringData);
+  }
+}
+
+/**
+ * Finalize stuck running epochs
+ */
+async function finalizeStuckRunningEpochs(
+  phraseMonitoringData: any,
+  currentPhraseMetadata: any,
+  currentEpoch: number,
+  currentPhrase: number
+) {
+  console.log(`[${new Date().toISOString()}] [BACKFILL] Memeriksa epoch-epoch yang stuck di status BERJALAN...`);
+
+  let totalFinalized = 0;
+  const allValidators = Object.keys(phraseMonitoringData);
+
+  for (const validatorAddress of allValidators) {
+    const validatorData = phraseMonitoringData[validatorAddress];
+    if (!validatorData?.epochs) continue;
+
+    for (const epochNum in validatorData.epochs) {
+      const epochNumber = parseInt(epochNum, 10);
+      const epochData = validatorData.epochs[epochNumber];
+
+      if (epochNumber < currentEpoch && epochData.status === 'BERJALAN') {
+        console.log(`[${new Date().toISOString()}] [BACKFILL] Finalisasi epoch ${epochNumber} untuk validator ${validatorAddress.substring(0, 8)}...`);
+
+        if (epochData.lastApiHelperState === 'TIDAK_AKTIF_API' && epochData.lastApiHelperStateChangeTimestamp) {
+          const globalEpochData = currentPhraseMetadata?.epochs?.[epochNumber];
+          if (globalEpochData?.startTime) {
+            const epochStartMs = new Date(globalEpochData.startTime).getTime();
+            const sessionLength = globalEpochData.sessionLength || (4 * 60 * 60 / AVG_BLOCK_TIME_SECONDS);
+            const estimatedEpochEndMs = epochStartMs + (sessionLength * AVG_BLOCK_TIME_SECONDS * 1000);
+
+            const lastChangeMs = new Date(epochData.lastApiHelperStateChangeTimestamp).getTime();
+            const additionalInactiveSeconds = Math.round((estimatedEpochEndMs - lastChangeMs) / 1000);
+
+            if (additionalInactiveSeconds > 0) {
+              epochData.totalApiHelperInactiveSeconds += additionalInactiveSeconds;
+            }
+          }
+        }
+
+        if (epochData.totalApiHelperInactiveSeconds >= EPOCH_FAIL_THRESHOLD_SECONDS) {
+          epochData.status = 'FAIL_API_HELPER';
+          console.log(`[${new Date().toISOString()}] [BACKFILL] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: FAIL (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
+        } else {
+          epochData.status = 'PASS_API_HELPER';
+          console.log(`[${new Date().toISOString()}] [BACKFILL] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: PASS (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
+        }
+
+        delete epochData.lastApiHelperState;
+        delete epochData.lastApiHelperStateChangeTimestamp;
+
+        totalFinalized++;
+      }
+    }
+  }
+
+  if (totalFinalized > 0) {
+    console.log(`[${new Date().toISOString()}] [BACKFILL] Total ${totalFinalized} epoch difinalisasi.`);
+    await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhrase}_data.json`, phraseMonitoringData);
+  } else {
+    console.log(`[${new Date().toISOString()}] [BACKFILL] Tidak ada epoch yang perlu difinalisasi.`);
+  }
+}
+
+/**
+ * Handle new epoch start
+ */
+async function handleApiHelperNewEpochStart(
+  phraseMonitoringData: any,
+  currentPhraseMetadata: any,
+  newEpoch: number,
+  currentPhraseNumberForNew: number,
+  currentRpcActiveValidatorsSet: Set<string>
+) {
+  console.log(`[${new Date().toISOString()}] --- Awal Epoch Baru ${newEpoch} Terdeteksi (Frasa ${currentPhraseNumberForNew}) ---`);
+  const currentTime = Date.now();
+
+  const { firstBlock: newEpochFirstBlock, sessionLength: newEpochSessionLength, epochStartTime: newEpochStartTime } = await getFirstBlockOfEpochDetails(newEpoch);
+  console.log(`[${new Date().toISOString()}] [DIAGNOSTIC] Epoch ${newEpoch} start time: ${newEpochStartTime || 'null'}`);
+
+  if (newEpochStartTime) {
+    if (newEpoch === getStartEpochForPhrase(currentPhraseNumberForNew)) {
+      currentPhraseMetadata.phraseStartTime = newEpochStartTime;
+    }
+    if (!currentPhraseMetadata.epochs) {
+      currentPhraseMetadata.epochs = {};
+    }
+    currentPhraseMetadata.epochs[newEpoch] = {
+      startTime: newEpochStartTime,
+      firstBlock: newEpochFirstBlock,
+      sessionLength: newEpochSessionLength
+    };
+    await writeJSON(`data/metadata/phrase_${currentPhraseNumberForNew}_metadata.json`, currentPhraseMetadata);
+  } else {
+    console.log(`[${new Date().toISOString()}] Gagal mendapatkan waktu mulai atau detail blok untuk epoch ${newEpoch}.`);
+  }
+
+  const allKnownValidators = new Set([...Object.keys(phraseMonitoringData), ...Array.from(currentRpcActiveValidatorsSet)]);
+
+  for (const validatorAddress of allKnownValidators) {
+    const isActive = currentRpcActiveValidatorsSet.has(validatorAddress);
+    initializeValidatorPhraseEpochDataForApiHelper(
+      phraseMonitoringData,
+      validatorAddress,
+      currentPhraseNumberForNew,
+      newEpoch,
+      currentTime,
+      isActive ? 'AKTIF_API' : 'TIDAK_AKTIF_API',
+      'BERJALAN',
+      lastKnownNetworkEpoch
+    );
+  }
+  await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhraseNumberForNew}_data.json`, phraseMonitoringData);
+}
+
+/**
+ * Main epoch management handler
  */
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
   try {
-    // TODO: Insert epoch monitoring logic here
-    // This will process:
-    // - Current epoch detection
-    // - Phrase metadata updates
-    // - Epoch status tracking
-    
-    console.log('[run-epoch] Endpoint called at:', new Date().toISOString());
-    
-    // Placeholder response
+    console.log(`[${new Date().toISOString()}] [run-epoch] Starting epoch monitoring cycle...`);
+
+    // Load global constants
+    const constants = await readJSON<any>('data/config/global_constants.json');
+    if (constants) {
+      FIRST_EVER_PHRASE_START_EPOCH = constants.FIRST_EVER_PHRASE_START_EPOCH || FIRST_EVER_PHRASE_START_EPOCH;
+      PHRASE_DURATION_EPOCHS = constants.PHRASE_DURATION_EPOCHS || PHRASE_DURATION_EPOCHS;
+      AVG_BLOCK_TIME_SECONDS = constants.AVG_BLOCK_TIME_SECONDS || AVG_BLOCK_TIME_SECONDS;
+      EPOCH_FAIL_THRESHOLD_SECONDS = constants.EPOCH_FAIL_THRESHOLD_SECONDS || EPOCH_FAIL_THRESHOLD_SECONDS;
+    }
+
+    // Get current network epoch
+    const currentNetworkEpoch = await getCurrentEpoch();
+    if (currentNetworkEpoch === -1) {
+      console.log(`[${new Date().toISOString()}] Gagal mendapatkan epoch jaringan, siklus ditunda.`);
+      return res.status(200).json({ success: true, message: 'Failed to get network epoch' });
+    }
+
+    const effectiveCurrentEpoch = currentNetworkEpoch;
+    const calculatedCurrentPhraseNumber = calculatePhraseNumber(effectiveCurrentEpoch);
+
+    if (calculatedCurrentPhraseNumber < 1) {
+      console.log(`[${new Date().toISOString()}] Epoch jaringan (${effectiveCurrentEpoch}) lebih awal dari frasa pertama. Menunggu.`);
+      lastKnownNetworkEpoch = effectiveCurrentEpoch;
+      return res.status(200).json({ success: true, message: 'Epoch before first phrase' });
+    }
+
+    // Load or initialize phrase data
+    let phraseMonitoringData: any = {};
+    let currentPhraseMetadata: any = {};
+
+    if (currentPhraseNumber !== calculatedCurrentPhraseNumber) {
+      console.log(`[${new Date().toISOString()}] --- Frasa Baru Terdeteksi (${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}) ---`);
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
+      if (!currentPhraseMetadata.epochs) {
+        currentPhraseMetadata.epochs = {};
+      }
+    } else if (currentPhraseNumber === -1) {
+      console.log(`[${new Date().toISOString()}] Inisialisasi pada Frasa ${calculatedCurrentPhraseNumber}.`);
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
+      if (!currentPhraseMetadata.epochs) {
+        currentPhraseMetadata.epochs = {};
+      }
+    }
+
+    currentPhraseNumber = calculatedCurrentPhraseNumber;
+    const currentPhraseStartEpoch = getStartEpochForPhrase(currentPhraseNumber);
+    const currentPhraseEndEpoch = currentPhraseStartEpoch + PHRASE_DURATION_EPOCHS - 1;
+
+    if (Object.keys(currentPhraseMetadata).length === 0 || currentPhraseMetadata.phraseNumber !== currentPhraseNumber) {
+      const existingPhraseStartTime = currentPhraseMetadata.phraseStartTime;
+      currentPhraseMetadata = {
+        phraseNumber: currentPhraseNumber,
+        phraseStartEpoch: currentPhraseStartEpoch,
+        phraseEndEpoch: currentPhraseEndEpoch,
+        phraseStartTime: existingPhraseStartTime || null,
+        epochs: {}
+      };
+      await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+    }
+
+    // Ensure current epoch metadata exists
+    if (lastKnownNetworkEpoch !== -1 && (
+      !currentPhraseMetadata.epochs[lastKnownNetworkEpoch] ||
+      !currentPhraseMetadata.epochs[lastKnownNetworkEpoch].startTime
+    )) {
+      console.log(`[${new Date().toISOString()}] [INFO] Metadata global untuk epoch ${lastKnownNetworkEpoch} (frasa ${currentPhraseNumber}) tidak ada/tidak lengkap. Mencoba mengambil.`);
+      const { firstBlock, sessionLength, epochStartTime } = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
+
+      if (epochStartTime) {
+        if (!currentPhraseMetadata.epochs) currentPhraseMetadata.epochs = {};
+        currentPhraseMetadata.epochs[lastKnownNetworkEpoch] = {
+          startTime: epochStartTime,
+          firstBlock: firstBlock,
+          sessionLength: sessionLength
+        };
+        await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+        console.log(`[${new Date().toISOString()}] [INFO] Berhasil menambahkan/memperbarui detail global untuk epoch ${lastKnownNetworkEpoch} ke metadata frasa ${currentPhraseNumber}.`);
+      }
+    }
+
+    // Finalize stuck epochs
+    if (currentPhraseNumber >= 1) {
+      await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
+    }
+
+    // Handle finished epochs
+    if (lastKnownNetworkEpoch !== -1 && effectiveCurrentEpoch > lastKnownNetworkEpoch) {
+      for (let epochJustFinished = lastKnownNetworkEpoch; epochJustFinished < effectiveCurrentEpoch; epochJustFinished++) {
+        const phraseOfFinishedEpoch = calculatePhraseNumber(epochJustFinished);
+        if (phraseOfFinishedEpoch > 0) {
+          await handleApiHelperEpochEnd(phraseMonitoringData, epochJustFinished, phraseOfFinishedEpoch);
+        }
+      }
+    }
+
+    // Handle new epoch start
+    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) && 
+        (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
+      const activeValidators = await getActiveValidators();
+      const activeValidatorsSet = new Set(activeValidators);
+      await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber, activeValidatorsSet);
+    }
+
+    lastKnownNetworkEpoch = effectiveCurrentEpoch;
+
+    console.log(`[${new Date().toISOString()}] [run-epoch] Epoch monitoring cycle completed successfully`);
+
     return res.status(200).json({
       success: true,
-      message: 'Epoch monitoring logic will be inserted here',
+      currentEpoch: effectiveCurrentEpoch,
+      currentPhrase: currentPhraseNumber,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
