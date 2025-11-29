@@ -74,9 +74,17 @@ See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed information abou
 - **Automated Monitoring**: Cron jobs run every minute to update data
 - **Responsive Dashboard**: Clean UI for monitoring all validators
 
-## How can I deploy this project?
+## 🚀 How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/2a1971bf-4313-4719-b708-6cf463306cf2) and click on Share -> Publish.
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+
+**Quick Deploy:**
+1. Push to GitHub
+2. Import to Vercel
+3. Create Blob Storage
+4. Deploy!
+
+Cron jobs will start automatically.
 
 ## Can I connect a custom domain to my Lovable project?
 
