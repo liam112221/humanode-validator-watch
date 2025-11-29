@@ -1,6 +1,8 @@
-# Welcome to your Lovable project
+# Humanode Validator Monitor
 
-## Project info
+Aplikasi monitoring untuk Humanode Validator dengan tracking epoch, uptime, dan performa validator secara real-time.
+
+## 🎯 Project Info
 
 **URL**: https://lovable.dev/projects/2a1971bf-4313-4719-b708-6cf463306cf2
 
@@ -50,15 +52,27 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+## 🛠️ What technologies are used for this project?
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Frontend**: React + TypeScript + Vite
+- **UI**: shadcn-ui + Tailwind CSS
+- **Backend**: Vercel Serverless Functions
+- **Storage**: Vercel Blob Storage
+- **Cron Jobs**: Vercel Cron (runs every 1 minute)
+
+## 📁 Project Structure
+
+See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed information about the project structure.
+
+## 🚀 Features
+
+- **Real-time Epoch Monitoring**: Track current epoch and phrase progression
+- **Validator Uptime Tracking**: Monitor validator status (PASS/FAIL/BERJALAN)
+- **Cycle Recap**: Weekly and phrase-based statistics
+- **Automated Monitoring**: Cron jobs run every minute to update data
+- **Responsive Dashboard**: Clean UI for monitoring all validators
 
 ## How can I deploy this project?
 
