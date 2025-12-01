@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "source": "/api/validator/:address",
+      "destination": "/api/validator"
     }
   ],
   "crons": [
