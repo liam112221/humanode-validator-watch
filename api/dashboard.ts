@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON } from '../storage/blob';
+import { readJSON } from '../storage/blob.js';
 
 /**
  * API Endpoint: /api/dashboard
