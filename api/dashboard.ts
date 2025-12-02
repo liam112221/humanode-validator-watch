@@ -58,6 +58,41 @@ export default async function handler(
         else if (epoch.status === 'FAIL_API_HELPER') failCount++;
         else if (epoch.status === 'BERJALAN_API_HELPER') runningCount++;
       }
+
+      // Derive current API helper state for this validator
+      let lastApiHelperState: string | null = null;
+      let lastApiHelperStateChangeTimestamp: string | null = null;
+
+      // 1) Prefer root-level fields if present (new data format)
+      if (typeof validatorData.lastApiHelperState === 'string') {
+        if (validatorData.lastApiHelperState === 'AKTIF_API') {
+          lastApiHelperState = 'active';
+        } else if (validatorData.lastApiHelperState === 'TIDAK_AKTIF_API') {
+          lastApiHelperState = 'inactive';
+        } else {
+          lastApiHelperState = validatorData.lastApiHelperState.toLowerCase();
+        }
+        lastApiHelperStateChangeTimestamp = validatorData.lastApiHelperStateChangeTimestamp || null;
+      } else if (typeof validatorData.currentReportedStatus === 'string') {
+        // 2) Support legacy summary format from original bot
+        lastApiHelperState = validatorData.currentReportedStatus.toLowerCase();
+        lastApiHelperStateChangeTimestamp = validatorData.lastSeenActiveByBotTimestamp || null;
+      } else {
+        // 3) Fallback: try to infer from latest epoch data, if present
+        const epochNumbers = Object.keys(epochs).map(n => parseInt(n, 10)).filter(n => !Number.isNaN(n));
+        if (epochNumbers.length > 0) {
+          const latestEpoch = Math.max(...epochNumbers);
+          const latestEpochData = epochs[latestEpoch];
+          if (latestEpochData) {
+            if (latestEpochData.lastApiHelperState === 'AKTIF_API') {
+              lastApiHelperState = 'active';
+            } else if (latestEpochData.lastApiHelperState === 'TIDAK_AKTIF_API') {
+              lastApiHelperState = 'inactive';
+            }
+            lastApiHelperStateChangeTimestamp = latestEpochData.lastApiHelperStateChangeTimestamp || null;
+          }
+        }
+      }
       
       return {
         address,
@@ -65,10 +100,12 @@ export default async function handler(
         failCount,
         runningCount,
         totalEpochs: Object.keys(epochs).length,
-        lastApiHelperState: validatorData.lastApiHelperState || null,
-        lastApiHelperStateChangeTimestamp: validatorData.lastApiHelperStateChangeTimestamp || null
+        lastApiHelperState,
+        lastApiHelperStateChangeTimestamp
       };
     });
+
+    const currentlyActiveCount = validators.filter(v => v.lastApiHelperState === 'active').length;
 
     return res.status(200).json({
       currentPhrase,
@@ -78,6 +115,9 @@ export default async function handler(
       constants,
       validators,
       totalValidators: validators.length,
+      // Convenience fields for clients that used the original bot JSON
+      totalTracked: validators.length,
+      currentlyActiveCount,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
