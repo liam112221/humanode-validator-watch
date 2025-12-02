@@ -7,11 +7,7 @@
   ],
   "crons": [
     {
-      "path": "/api/run-epoch",
-      "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/run-uptime",
+      "path": "/api/run-monitor",
       "schedule": "*/1 * * * *"
     }
   ]
