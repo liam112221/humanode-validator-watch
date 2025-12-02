@@ -44,6 +44,7 @@ export async function writeJSON(path: string, data: any): Promise<void> {
     await put(path, JSON.stringify(data, null, 2), {
       access: 'public',
       contentType: 'application/json',
+      allowOverwrite: true,
     });
   } catch (error) {
     console.error(`Error writing JSON to ${path}:`, error);

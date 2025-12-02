@@ -24,7 +24,7 @@ export async function getCurrentEpoch(): Promise<number> {
   try {
     const api = await getApi();
     const index = await api.query.session.currentIndex();
-    return index.toNumber();
+    return Number(index.toString());
   } catch (error) {
     console.error('Error getting current epoch:', error);
     return -1;
@@ -47,11 +47,11 @@ export async function getSessionProgress(): Promise<{
     if (currentIndex === -1) return null;
 
     // Get session length (blocks per epoch) from BABE constants
-    const sessionLength = api.consts.babe.epochDuration.toNumber();
+    const sessionLength = Number(api.consts.babe.epochDuration.toString());
 
     // Get current block header
     const header = await api.rpc.chain.getHeader();
-    const currentBlock = header.number.toNumber();
+    const currentBlock = Number(header.number.toString());
 
     // Calculate session progress
     const sessionProgress = currentBlock % sessionLength;
@@ -74,7 +74,7 @@ export async function getActiveValidators(): Promise<string[]> {
   try {
     const api = await getApi();
     const validators = await api.query.session.validators();
-    return validators.map(v => v.toString());
+    return (validators as any).map((v: any) => v.toString());
   } catch (error) {
     console.error('Error getting validators:', error);
     return [];
@@ -100,9 +100,9 @@ export async function getFirstBlockOfEpochDetails(targetEpoch: number): Promise<
     }
 
     const header = await api.rpc.chain.getHeader();
-    const currentBlockNumber = header.number.toNumber();
+    const currentBlockNumber = Number(header.number.toString());
 
-    const sessionLength = api.consts.babe.epochDuration.toNumber();
+    const sessionLength = Number(api.consts.babe.epochDuration.toString());
 
     // Derive offset between epoch index and block number division
     const floorDiv = Math.floor(currentBlockNumber / sessionLength);
