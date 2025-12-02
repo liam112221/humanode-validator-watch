@@ -3,6 +3,10 @@
     {
       "source": "/api/validator/:address",
       "destination": "/api/validator"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/"
     }
   ],
   "crons": [
