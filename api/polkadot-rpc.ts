@@ -38,6 +38,7 @@ export async function getSessionProgress(): Promise<{
   currentIndex: number;
   sessionLength: number;
   sessionProgress: number;
+  currentBlock: number;
 } | null> {
   try {
     const api = await getApi();
@@ -60,6 +61,7 @@ export async function getSessionProgress(): Promise<{
       currentIndex,
       sessionLength,
       sessionProgress,
+      currentBlock,
     };
   } catch (error) {
     console.error('Error getting session progress:', error);

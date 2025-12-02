@@ -45,6 +45,22 @@ type ValidatorDetailData = {
   timestamp: string;
 };
 
+type NetworkEpochProgress = {
+  currentEpochSystem: number;
+  blocksInEpoch: number;
+  currentBlockInEpoch: number;
+  remainingBlocksInEpoch: number;
+  percentageCompleted: number;
+  nextEpochETASec: number;
+  estimatedEpochCompletionTime: string;
+  currentAbsoluteBlock: number;
+  error: string | null;
+};
+
+type NetworkStatusData = {
+  webServerEpochProgress: NetworkEpochProgress;
+};
+
 const ValidatorDetail = () => {
   const { address } = useParams();
   const navigate = useNavigate();
@@ -58,6 +74,16 @@ const ValidatorDetail = () => {
       return response.json();
     },
     enabled: !!address,
+    refetchInterval: 60000,
+  });
+
+  const { data: networkStatus } = useQuery<NetworkStatusData>({
+    queryKey: ["network-status"],
+    queryFn: async () => {
+      const response = await fetch("/api/network-status");
+      if (!response.ok) throw new Error("Failed to fetch network status");
+      return response.json();
+    },
     refetchInterval: 60000,
   });
 
@@ -100,7 +126,7 @@ const ValidatorDetail = () => {
         return "bg-green-500";
       case "FAIL_API_HELPER":
         return "bg-red-500";
-      case "BERJALAN_API_HELPER":
+      case "BERJALAN":
         return "bg-blue-500 animate-pulse";
       case "NO_DATA":
         return "bg-gray-300";
@@ -156,16 +182,89 @@ const ValidatorDetail = () => {
           variant="ghost"
           className="mb-4"
           onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
 
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Validator Detail
-          </h1>
-          <p className="text-sm text-muted-foreground font-mono break-all">
+          {networkStatus?.webServerEpochProgress && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>
+                  Current Network Epoch Progress (Epoch{" "}
+                  {networkStatus.webServerEpochProgress.currentEpochSystem})
+                </CardTitle>
+                <CardDescription>
+                  Live epoch progress from Humanode network
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            networkStatus.webServerEpochProgress.percentageCompleted
+                          )
+                        ).toFixed(2)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {networkStatus.webServerEpochProgress.percentageCompleted.toFixed(2)}%
+                    {" "}completed
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Blocks in Epoch</p>
+                    <p className="font-semibold">
+                      {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()}
+                      {" / "}
+                      {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Remaining Blocks</p>
+                    <p className="font-semibold">
+                      {networkStatus.webServerEpochProgress.remainingBlocksInEpoch.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Estimated Next Epoch In</p>
+                    <p className="font-semibold">
+                      {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-muted-foreground">Estimated Epoch Completion Time</p>
+                    <p className="font-semibold">
+                      {formatDateTime(
+                        networkStatus.webServerEpochProgress.estimatedEpochCompletionTime
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Current Network Block</p>
+                    <p className="font-semibold">
+                      {networkStatus.webServerEpochProgress.currentAbsoluteBlock.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <header className="mb-8">
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Validator Detail
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono break-all">
             {data?.validatorAddress}
           </p>
         </header>

@@ -12,7 +12,6 @@ type ValidatorData = {
   address: string;
   passCount: number;
   failCount: number;
-  runningCount: number;
   totalEpochs: number;
   lastApiHelperState: string | null;
   lastApiHelperStateChangeTimestamp: string | null;
@@ -228,12 +227,12 @@ const Dashboard = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                       Validator Address
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Pass / Fail / Running
-                    </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                        Pass / Fail
+                      </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                       Last Seen Active
                     </th>
@@ -279,13 +278,11 @@ const Dashboard = () => {
                           {validator.lastApiHelperState?.toUpperCase() || "UNKNOWN"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="text-green-600 font-semibold">{validator.passCount}</span>
-                        {" / "}
-                        <span className="text-red-600 font-semibold">{validator.failCount}</span>
-                        {" / "}
-                        <span className="text-blue-600 font-semibold">{validator.runningCount}</span>
-                      </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="text-green-600 font-semibold">{validator.passCount}</span>
+                          {" / "}
+                          <span className="text-red-600 font-semibold">{validator.failCount}</span>
+                        </td>
                       <td className="px-4 py-3 text-sm">
                         {formatDateTime(validator.lastApiHelperStateChangeTimestamp)}
                       </td>
