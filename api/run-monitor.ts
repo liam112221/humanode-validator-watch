@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, writeJSON } from '../storage/blob';
-import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc';
+import { readJSON, writeJSON } from '../storage/blob.js';
+import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -102,7 +102,7 @@ async function handleApiHelperEpochEnd(
   const currentTime = Date.now();
   let dataWasModified = false;
 
-  const allRelevantValidators = new Set(Object.keys(phraseMonitoringData));
+  const allRelevantValidators = new Set<string>(Object.keys(phraseMonitoringData));
 
   for (const validatorAddress of allRelevantValidators) {
     const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[finishedEpoch];
@@ -234,7 +234,10 @@ async function handleApiHelperNewEpochStart(
     console.log(`[${new Date().toISOString()}] Gagal mendapatkan waktu mulai atau detail blok untuk epoch ${newEpoch}.`);
   }
 
-  const allKnownValidators = new Set([...Object.keys(phraseMonitoringData), ...Array.from(currentRpcActiveValidatorsSet)]);
+  const allKnownValidators = new Set<string>([
+    ...Object.keys(phraseMonitoringData),
+    ...Array.from(currentRpcActiveValidatorsSet)
+  ]);
 
   for (const validatorAddress of allKnownValidators) {
     const isActive = currentRpcActiveValidatorsSet.has(validatorAddress);
@@ -265,7 +268,7 @@ async function runUptimeCheck(
   console.log(`[${new Date().toISOString()}] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
 
   const currentTime = Date.now();
-  const allKnownValidators = new Set([
+  const allKnownValidators = new Set<string>([
     ...Object.keys(phraseMonitoringData),
     ...Array.from(activeValidators)
   ]);
@@ -274,7 +277,7 @@ async function runUptimeCheck(
 
   for (const validatorAddress of allKnownValidators) {
     const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[currentEpoch];
-    
+
     // Skip if no data or epoch is finalized
     if (!epochData || epochData.status !== 'BERJALAN') {
       continue;
@@ -344,7 +347,7 @@ export default async function handler(
       return res.status(200).json({ success: true, message: 'Failed to get network epoch' });
     }
 
-    const activeValidatorsSet = new Set(activeValidatorsList);
+    const activeValidatorsSet = new Set<string>(activeValidatorsList);
     const effectiveCurrentEpoch = currentNetworkEpoch;
     const calculatedCurrentPhraseNumber = calculatePhraseNumber(effectiveCurrentEpoch);
 
@@ -411,7 +414,7 @@ export default async function handler(
     }
 
     // ===== EPOCH MANAGEMENT LOGIC =====
-    
+
     // Finalize stuck epochs
     if (currentPhraseNumber >= 1) {
       await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
@@ -429,8 +432,8 @@ export default async function handler(
 
     // Handle new epoch start
     let epochTransitioned = false;
-    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) && 
-        (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
+    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) &&
+      (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
       await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber, activeValidatorsSet);
       epochTransitioned = true;
     }

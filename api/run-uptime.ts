@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, writeJSON } from '../storage/blob';
-import { getActiveValidators, getCurrentEpoch } from './polkadot-rpc';
+import { readJSON, writeJSON } from '../storage/blob.js';
+import { getActiveValidators, getCurrentEpoch } from './polkadot-rpc.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -87,12 +87,12 @@ export default async function handler(
 
     // Get active validators from RPC
     const activeValidatorsList = await getActiveValidators();
-    const activeValidators = new Set(activeValidatorsList);
+    const activeValidators = new Set<string>(activeValidatorsList);
     
     console.log(`[${new Date().toISOString()}] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
 
     const currentTime = Date.now();
-    const allKnownValidators = new Set([
+    const allKnownValidators = new Set<string>([
       ...Object.keys(phraseMonitoringData),
       ...Array.from(activeValidators)
     ]);

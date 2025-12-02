@@ -17,16 +17,16 @@ export async function readJSON<T = any>(path: string): Promise<T | null> {
       prefix: path,
       limit: 1
     });
-    
+
     if (blobs.length === 0) {
       return null;
     }
-    
+
     const response = await fetch(blobs[0].url);
     if (!response.ok) {
       return null;
     }
-    
+
     return await response.json() as T;
   } catch (error) {
     console.error(`Error reading JSON from ${path}:`, error);

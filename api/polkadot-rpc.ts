@@ -36,7 +36,7 @@ async function rpcCall<T = any>(method: string, params: any[] = []): Promise<T |
     }
 
     const data: RpcResponse<T> = await response.json();
-    
+
     if (data.error) {
       console.error(`RPC error: ${data.error.message}`);
       return null;
@@ -55,7 +55,7 @@ async function rpcCall<T = any>(method: string, params: any[] = []): Promise<T |
 export async function getCurrentEpoch(): Promise<number> {
   const result = await rpcCall<string>('state_call', ['SessionApi_session_index', '0x']);
   if (!result) return -1;
-  
+
   // Convert hex to number
   return parseInt(result, 16);
 }
@@ -102,7 +102,7 @@ export async function getActiveValidators(): Promise<string[]> {
   try {
     const result = await rpcCall<string[]>('state_call', ['SessionApi_validators', '0x']);
     if (!result) return [];
-    
+
     return result.map(v => {
       // Convert hex address to string if needed
       if (v.startsWith('0x')) {

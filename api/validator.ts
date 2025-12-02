@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, listBlobs } from '../storage/blob';
+import { readJSON, listBlobs } from '../storage/blob.js';
 
 /**
  * API Endpoint: /api/validator/:address
@@ -12,7 +12,7 @@ export default async function handler(
   try {
     // Support both query param and path param
     const address = req.query.address as string || req.url?.split('/api/validator/')[1]?.split('?')[0];
-    
+
     if (!address) {
       return res.status(400).json({
         error: 'Missing address parameter'
@@ -20,7 +20,7 @@ export default async function handler(
     }
 
     const constants = await readJSON<any>('data/config/global_constants.json');
-    
+
     if (!constants) {
       return res.status(500).json({
         error: 'Global constants not found'
@@ -37,14 +37,14 @@ export default async function handler(
     try {
       // List all metadata files
       const metadataBlobs = await listBlobs('data/metadata/');
-      const metadataFiles = metadataBlobs.filter(blob => 
+      const metadataFiles = metadataBlobs.filter(blob =>
         blob.pathname.includes('phrase_') && blob.pathname.endsWith('_metadata.json')
       );
 
       for (const blob of metadataFiles) {
         const match = blob.pathname.match(/phrase_(\d+)_metadata\.json/);
         if (!match) continue;
-        
+
         const phraseNum = parseInt(match[1], 10);
         const metadata = await readJSON<any>(`data/metadata/phrase_${phraseNum}_metadata.json`);
         if (metadata) {
@@ -56,17 +56,17 @@ export default async function handler(
 
       // List all phrase data files
       const phrasedataBlobs = await listBlobs('data/phrasedata/');
-      const phrasedataFiles = phrasedataBlobs.filter(blob => 
+      const phrasedataFiles = phrasedataBlobs.filter(blob =>
         blob.pathname.includes('api_helper_phrase_') && blob.pathname.endsWith('_data.json')
       );
 
       for (const blob of phrasedataFiles) {
         const match = blob.pathname.match(/api_helper_phrase_(\d+)_data\.json/);
         if (!match) continue;
-        
+
         const phraseNum = parseInt(match[1], 10);
         const phraseData = await readJSON<Record<string, any>>(`data/phrasedata/api_helper_phrase_${phraseNum}_data.json`);
-        
+
         if (phraseData && phraseData[address]) {
           validatorDataForAllPhrases[`phrase_${phraseNum}`] = phraseData[address];
         }
@@ -92,7 +92,7 @@ export default async function handler(
       for (let i = latestGlobalPhraseMetadata.phraseStartEpoch; i <= latestGlobalPhraseMetadata.phraseEndEpoch; i++) {
         const globalEpochData = latestGlobalPhraseMetadata.epochs ? latestGlobalPhraseMetadata.epochs[i] : null;
         const validatorEpochData = phraseDataForValidatorLatest?.epochs?.[i] || {};
-        
+
         allEpochsInLatestPhrase.push({
           epochNumber: i,
           status: validatorEpochData.status || 'NO_DATA',
@@ -111,7 +111,7 @@ export default async function handler(
     const phraseHistory = allPhrasesMetadata.map(metadata => {
       const validatorPhraseData = validatorDataForAllPhrases[`phrase_${metadata.phraseNumber}`];
       let passCount = 0, failCount = 0, otherCount = 0, hasDataForThisPhrase = false;
-      
+
       if (validatorPhraseData && validatorPhraseData.epochs) {
         hasDataForThisPhrase = true;
         for (const epochNum in validatorPhraseData.epochs) {
@@ -123,7 +123,7 @@ export default async function handler(
           }
         }
       }
-      
+
       return {
         phraseNumber: metadata.phraseNumber,
         startEpoch: metadata.phraseStartEpoch,
