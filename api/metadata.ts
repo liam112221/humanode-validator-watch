@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON } from '../storage/blob';
+import { readJSON } from '../storage/blob.js';
 
 /**
  * API Endpoint: /api/metadata
@@ -11,7 +11,7 @@ export default async function handler(
 ) {
   try {
     const { phrase } = req.query;
-    
+
     if (!phrase) {
       return res.status(400).json({
         error: 'Missing phrase parameter'
@@ -20,9 +20,9 @@ export default async function handler(
 
     const phraseNumber = parseInt(phrase as string, 10);
     const metadataPath = `data/metadata/phrase_${phraseNumber}_metadata.json`;
-    
+
     const metadata = await readJSON(metadataPath);
-    
+
     if (!metadata) {
       return res.status(404).json({
         error: `Metadata not found for phrase ${phraseNumber}`

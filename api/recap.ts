@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, listBlobs } from '../storage/blob';
+import { readJSON, listBlobs } from '../storage/blob.js';
 
 /**
  * API Endpoint: /api/recap
@@ -11,7 +11,7 @@ export default async function handler(
 ) {
   try {
     const constants = await readJSON<any>('data/config/global_constants.json');
-    
+
     if (!constants) {
       return res.status(500).json({
         error: 'Global constants not found'
@@ -28,21 +28,21 @@ export default async function handler(
 
     // List all phrase data files
     const blobs = await listBlobs('data/phrasedata/');
-    const phraseDataFiles = blobs.filter(blob => 
+    const phraseDataFiles = blobs.filter(blob =>
       blob.pathname.includes('api_helper_phrase_') && blob.pathname.endsWith('_data.json')
     );
 
     for (const blob of phraseDataFiles) {
       const match = blob.pathname.match(/api_helper_phrase_(\d+)_data\.json/);
       if (!match) continue;
-      
+
       const phraseNum = parseInt(match[1], 10);
-      
+
       const metadata = await readJSON<any>(`data/metadata/phrase_${phraseNum}_metadata.json`);
       const phraseData = await readJSON<Record<string, any>>(`data/phrasedata/api_helper_phrase_${phraseNum}_data.json`);
-      
+
       if (!metadata || !phraseData) continue;
-      
+
       const validators = Object.keys(phraseData);
       const phraseStartEpoch = metadata.phraseStartEpoch;
       const isOngoing = phraseNum === currentPhraseNumber;
@@ -66,7 +66,7 @@ export default async function handler(
               }
             }
           }
-          
+
           if (week1Fails > 0) week1.withFails++; else week1.zeroFails++;
           if (week2Fails > 0) week2.withFails++; else week2.zeroFails++;
         }
@@ -97,7 +97,7 @@ export default async function handler(
               }
             }
           }
-          
+
           if (week1PassCount === 42) week1FullPass++;
           if (week2PassCount === 42) week2FullPass++;
         }

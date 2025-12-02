@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, writeJSON } from '../storage/blob';
-import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc';
+import { readJSON, writeJSON } from '../storage/blob.js';
+import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -102,7 +102,7 @@ async function handleApiHelperEpochEnd(
   const currentTime = Date.now();
   let dataWasModified = false;
 
-  const allRelevantValidators = new Set(Object.keys(phraseMonitoringData));
+  const allRelevantValidators = new Set<string>(Object.keys(phraseMonitoringData));
 
   for (const validatorAddress of allRelevantValidators) {
     const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[finishedEpoch];
@@ -234,7 +234,10 @@ async function handleApiHelperNewEpochStart(
     console.log(`[${new Date().toISOString()}] Gagal mendapatkan waktu mulai atau detail blok untuk epoch ${newEpoch}.`);
   }
 
-  const allKnownValidators = new Set([...Object.keys(phraseMonitoringData), ...Array.from(currentRpcActiveValidatorsSet)]);
+  const allKnownValidators = new Set<string>([
+    ...Object.keys(phraseMonitoringData),
+    ...Array.from(currentRpcActiveValidatorsSet)
+  ]);
 
   for (const validatorAddress of allKnownValidators) {
     const isActive = currentRpcActiveValidatorsSet.has(validatorAddress);
@@ -359,10 +362,10 @@ export default async function handler(
     }
 
     // Handle new epoch start
-    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) && 
-        (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
+    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) &&
+      (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
       const activeValidators = await getActiveValidators();
-      const activeValidatorsSet = new Set(activeValidators);
+      const activeValidatorsSet = new Set<string>(activeValidators);
       await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber, activeValidatorsSet);
     }
 
