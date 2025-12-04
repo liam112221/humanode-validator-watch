@@ -202,6 +202,78 @@ async function finalizeStuckRunningEpochs(
 }
 
 /**
+ * Finalize all remaining BERJALAN epochs in previous phrase when phrase transitions
+ */
+async function finalizePreviousPhrase(previousPhraseNumber: number) {
+  if (previousPhraseNumber < 1) return;
+
+  console.log(`[${new Date().toISOString()}] [PHRASE-END] Finalisasi semua epoch BERJALAN di phrase ${previousPhraseNumber}...`);
+
+  const previousPhraseData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${previousPhraseNumber}_data.json`);
+  const previousPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${previousPhraseNumber}_metadata.json`);
+
+  if (!previousPhraseData || Object.keys(previousPhraseData).length === 0) {
+    console.log(`[${new Date().toISOString()}] [PHRASE-END] Tidak ada data untuk phrase ${previousPhraseNumber}.`);
+    return;
+  }
+
+  let totalFinalized = 0;
+
+  for (const validatorAddress of Object.keys(previousPhraseData)) {
+    const validatorData = previousPhraseData[validatorAddress];
+    if (!validatorData?.epochs) continue;
+
+    for (const epochNum in validatorData.epochs) {
+      const epochNumber = parseInt(epochNum, 10);
+      const epochData = validatorData.epochs[epochNumber];
+
+      if (epochData.status === 'BERJALAN') {
+        console.log(`[${new Date().toISOString()}] [PHRASE-END] Finalisasi epoch ${epochNumber} untuk validator ${validatorAddress.substring(0, 8)}...`);
+
+        // Calculate final inactive duration if validator was inactive
+        if (epochData.lastApiHelperState === 'TIDAK_AKTIF_API' && epochData.lastApiHelperStateChangeTimestamp) {
+          const globalEpochData = previousPhraseMetadata?.epochs?.[epochNumber];
+          if (globalEpochData?.startTime) {
+            const epochStartMs = new Date(globalEpochData.startTime).getTime();
+            const sessionLength = globalEpochData.sessionLength || (4 * 60 * 60 / AVG_BLOCK_TIME_SECONDS);
+            const estimatedEpochEndMs = epochStartMs + (sessionLength * AVG_BLOCK_TIME_SECONDS * 1000);
+
+            const lastChangeMs = new Date(epochData.lastApiHelperStateChangeTimestamp).getTime();
+            const additionalInactiveSeconds = Math.round((estimatedEpochEndMs - lastChangeMs) / 1000);
+
+            if (additionalInactiveSeconds > 0) {
+              epochData.totalApiHelperInactiveSeconds += additionalInactiveSeconds;
+            }
+          }
+        }
+
+        // Determine final status
+        if (epochData.totalApiHelperInactiveSeconds >= EPOCH_FAIL_THRESHOLD_SECONDS) {
+          epochData.status = 'FAIL_API_HELPER';
+          console.log(`[${new Date().toISOString()}] [PHRASE-END] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: FAIL (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
+        } else {
+          epochData.status = 'PASS_API_HELPER';
+          console.log(`[${new Date().toISOString()}] [PHRASE-END] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: PASS (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
+        }
+
+        // Clean up temporary fields
+        delete epochData.lastApiHelperState;
+        delete epochData.lastApiHelperStateChangeTimestamp;
+
+        totalFinalized++;
+      }
+    }
+  }
+
+  if (totalFinalized > 0) {
+    await writeJSON(`data/phrasedata/api_helper_phrase_${previousPhraseNumber}_data.json`, previousPhraseData);
+    console.log(`[${new Date().toISOString()}] [PHRASE-END] Total ${totalFinalized} epoch di phrase ${previousPhraseNumber} difinalisasi.`);
+  } else {
+    console.log(`[${new Date().toISOString()}] [PHRASE-END] Tidak ada epoch BERJALAN di phrase ${previousPhraseNumber}.`);
+  }
+}
+
+/**
  * Handle new epoch start
  */
 async function handleApiHelperNewEpochStart(
@@ -296,6 +368,12 @@ export default async function handler(
 
     if (currentPhraseNumber !== calculatedCurrentPhraseNumber) {
       console.log(`[${new Date().toISOString()}] --- Frasa Baru Terdeteksi (${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}) ---`);
+      
+      // CRITICAL: Finalize all BERJALAN epochs in previous phrase before transitioning
+      if (currentPhraseNumber >= 1) {
+        await finalizePreviousPhrase(currentPhraseNumber);
+      }
+      
       phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
       currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
       if (!currentPhraseMetadata.epochs) {
