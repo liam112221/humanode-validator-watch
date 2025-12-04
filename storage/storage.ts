@@ -24,6 +24,7 @@ const r2Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME!;
+const PATH_PREFIX = 'humanode/';
 
 /**
  * Read JSON data from R2
@@ -34,7 +35,7 @@ export async function readJSON<T = any>(path: string): Promise<T | null> {
   try {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: path,
+      Key: PATH_PREFIX + path,
     });
 
     const response = await r2Client.send(command);
@@ -63,7 +64,7 @@ export async function writeJSON(path: string, data: any): Promise<void> {
   try {
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: path,
+      Key: PATH_PREFIX + path,
       Body: JSON.stringify(data, null, 2),
       ContentType: 'application/json',
     });
@@ -84,7 +85,7 @@ export async function listBlobs(prefix: string) {
   try {
     const command = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
-      Prefix: prefix,
+      Prefix: PATH_PREFIX + prefix,
       MaxKeys: 1000,
     });
 
@@ -94,9 +95,9 @@ export async function listBlobs(prefix: string) {
       return [];
     }
 
-    // Convert to Vercel Blob-compatible format
+    // Convert to Vercel Blob-compatible format, strip prefix from pathname
     return response.Contents.map(item => ({
-      pathname: item.Key || '',
+      pathname: (item.Key || '').replace(PATH_PREFIX, ''),
       url: `https://${BUCKET_NAME}.r2.cloudflarestorage.com/${item.Key}`,
       size: item.Size || 0,
       uploadedAt: item.LastModified || new Date(),
