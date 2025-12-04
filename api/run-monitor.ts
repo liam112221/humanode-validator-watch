@@ -133,6 +133,7 @@ async function handleApiHelperEpochEnd(
 
   if (dataWasModified && phraseNumberForFinishedEpoch >= 1) {
     await writeJSON(`data/phrasedata/api_helper_phrase_${phraseNumberForFinishedEpoch}_data.json`, phraseMonitoringData);
+    console.log(`[${new Date().toISOString()}] [SAVE] Data epoch ${finishedEpoch} yang selesai telah disimpan.`);
   }
 }
 
@@ -218,7 +219,6 @@ async function finalizePreviousPhrase(previousPhraseNumber: number) {
   }
 
   let totalFinalized = 0;
-  const currentTime = Date.now();
 
   for (const validatorAddress of Object.keys(previousPhraseData)) {
     const validatorData = previousPhraseData[validatorAddress];
@@ -231,7 +231,6 @@ async function finalizePreviousPhrase(previousPhraseNumber: number) {
       if (epochData.status === 'BERJALAN') {
         console.log(`[${new Date().toISOString()}] [PHRASE-END] Finalisasi epoch ${epochNumber} untuk validator ${validatorAddress.substring(0, 8)}...`);
 
-        // Calculate final inactive duration if validator was inactive
         if (epochData.lastApiHelperState === 'TIDAK_AKTIF_API' && epochData.lastApiHelperStateChangeTimestamp) {
           const globalEpochData = previousPhraseMetadata?.epochs?.[epochNumber];
           if (globalEpochData?.startTime) {
@@ -248,7 +247,6 @@ async function finalizePreviousPhrase(previousPhraseNumber: number) {
           }
         }
 
-        // Determine final status
         if (epochData.totalApiHelperInactiveSeconds >= EPOCH_FAIL_THRESHOLD_SECONDS) {
           epochData.status = 'FAIL_API_HELPER';
           console.log(`[${new Date().toISOString()}] [PHRASE-END] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: FAIL (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
@@ -257,7 +255,6 @@ async function finalizePreviousPhrase(previousPhraseNumber: number) {
           console.log(`[${new Date().toISOString()}] [PHRASE-END] Epoch ${epochNumber} untuk ${validatorAddress.substring(0, 8)}: PASS (${epochData.totalApiHelperInactiveSeconds}s inactive)`);
         }
 
-        // Clean up temporary fields
         delete epochData.lastApiHelperState;
         delete epochData.lastApiHelperStateChangeTimestamp;
 
@@ -326,6 +323,7 @@ async function handleApiHelperNewEpochStart(
     );
   }
   await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhraseNumberForNew}_data.json`, phraseMonitoringData);
+  console.log(`[${new Date().toISOString()}] [SAVE] Data epoch baru ${newEpoch} telah disimpan.`);
 }
 
 /**
@@ -337,8 +335,8 @@ async function runUptimeCheck(
   currentEpoch: number,
   currentPhrase: number
 ): Promise<boolean> {
-  console.log(`[${new Date().toISOString()}] [UPTIME] Checking validator uptime...`);
-  console.log(`[${new Date().toISOString()}] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
+  console.log(`[${new Date().toISOString()}] [UPTIME] Checking validator uptime for epoch ${currentEpoch}...`);
+  console.log(`[${new Date().toISOString()}] [UPTIME] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
 
   const currentTime = Date.now();
   const allKnownValidators = new Set<string>([
@@ -351,7 +349,6 @@ async function runUptimeCheck(
   for (const validatorAddress of allKnownValidators) {
     const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[currentEpoch];
 
-    // Skip if no data or epoch is finalized
     if (!epochData || epochData.status !== 'BERJALAN') {
       continue;
     }
@@ -360,31 +357,26 @@ async function runUptimeCheck(
     const wasActive = epochData.lastApiHelperState === 'AKTIF_API';
 
     if (wasActive && !isActiveNow) {
-      // Transition from ACTIVE to INACTIVE
-      console.log(`[${new Date().toISOString()}] Validator ${validatorAddress}: Transisi AKTIF -> TIDAK AKTIF.`);
+      console.log(`[${new Date().toISOString()}] [UPTIME] Validator ${validatorAddress.substring(0, 8)}: Transisi AKTIF -> TIDAK AKTIF.`);
       updateApiHelperInactiveDuration(phraseMonitoringData, validatorAddress, currentEpoch, currentTime);
       epochData.lastApiHelperState = 'TIDAK_AKTIF_API';
       dataChanged = true;
     } else if (!wasActive && isActiveNow) {
-      // Transition from INACTIVE to ACTIVE
-      console.log(`[${new Date().toISOString()}] Validator ${validatorAddress}: Transisi TIDAK AKTIF -> AKTIF.`);
+      console.log(`[${new Date().toISOString()}] [UPTIME] Validator ${validatorAddress.substring(0, 8)}: Transisi TIDAK AKTIF -> AKTIF.`);
       updateApiHelperInactiveDuration(phraseMonitoringData, validatorAddress, currentEpoch, currentTime);
       epochData.lastApiHelperState = 'AKTIF_API';
       dataChanged = true;
     } else if (!wasActive && !isActiveNow) {
-      // Still INACTIVE - update duration
       updateApiHelperInactiveDuration(phraseMonitoringData, validatorAddress, currentEpoch, currentTime);
       dataChanged = true;
     } else {
-      // Still ACTIVE - just update timestamp
       epochData.lastApiHelperStateChangeTimestamp = new Date(currentTime).toISOString();
     }
   }
 
-  // Save if data changed
   if (dataChanged) {
     await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhrase}_data.json`, phraseMonitoringData);
-    console.log(`[${new Date().toISOString()}] Data pemantauan frasa ${currentPhrase} disimpan (uptime check).`);
+    console.log(`[${new Date().toISOString()}] [UPTIME] [SAVE] Data uptime check untuk epoch ${currentEpoch} telah disimpan.`);
   }
 
   return dataChanged;
@@ -398,7 +390,9 @@ export default async function handler(
   res: VercelResponse
 ) {
   try {
-    console.log(`[${new Date().toISOString()}] [run-monitor] Starting combined monitoring cycle...`);
+    console.log(`[${new Date().toISOString()}] ========================================`);
+    console.log(`[${new Date().toISOString()}] [run-monitor] Starting monitoring cycle...`);
+    console.log(`[${new Date().toISOString()}] ========================================`);
 
     // Load global constants
     const constants = await readJSON<any>('data/config/global_constants.json');
@@ -409,7 +403,7 @@ export default async function handler(
       EPOCH_FAIL_THRESHOLD_SECONDS = constants.EPOCH_FAIL_THRESHOLD_SECONDS || EPOCH_FAIL_THRESHOLD_SECONDS;
     }
 
-    // Get current network epoch and active validators (single RPC call optimization)
+    // Get current network epoch and active validators
     const [currentNetworkEpoch, activeValidatorsList] = await Promise.all([
       getCurrentEpoch(),
       getActiveValidators()
@@ -424,52 +418,57 @@ export default async function handler(
     const effectiveCurrentEpoch = currentNetworkEpoch;
     const calculatedCurrentPhraseNumber = calculatePhraseNumber(effectiveCurrentEpoch);
 
+    console.log(`[${new Date().toISOString()}] [INFO] Current network epoch: ${effectiveCurrentEpoch}`);
+    console.log(`[${new Date().toISOString()}] [INFO] Calculated phrase: ${calculatedCurrentPhraseNumber}`);
+    console.log(`[${new Date().toISOString()}] [INFO] Last known epoch: ${lastKnownNetworkEpoch}`);
+
     if (calculatedCurrentPhraseNumber < 1) {
       console.log(`[${new Date().toISOString()}] Epoch jaringan (${effectiveCurrentEpoch}) lebih awal dari frasa pertama. Menunggu.`);
       lastKnownNetworkEpoch = effectiveCurrentEpoch;
       return res.status(200).json({ success: true, message: 'Epoch before first phrase' });
     }
 
-    // Load or initialize phrase data
-    let phraseMonitoringData: any = {};
-    let currentPhraseMetadata: any = {};
+    // Handle phrase transition
+    if (currentPhraseNumber !== calculatedCurrentPhraseNumber && currentPhraseNumber !== -1) {
+      console.log(`[${new Date().toISOString()}] ========================================`);
+      console.log(`[${new Date().toISOString()}] [PHRASE-TRANSITION] Detected phrase change: ${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}`);
+      console.log(`[${new Date().toISOString()}] ========================================`);
 
-    if (currentPhraseNumber !== calculatedCurrentPhraseNumber) {
-      console.log(`[${new Date().toISOString()}] --- Frasa Baru Terdeteksi (${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}) ---`);
-      
-      // CRITICAL: Finalize all BERJALAN epochs in previous phrase before transitioning
       if (currentPhraseNumber >= 1) {
         await finalizePreviousPhrase(currentPhraseNumber);
       }
-      
-      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
-      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
-      if (!currentPhraseMetadata.epochs) {
-        currentPhraseMetadata.epochs = {};
-      }
+
+      currentPhraseNumber = calculatedCurrentPhraseNumber;
     } else if (currentPhraseNumber === -1) {
-      console.log(`[${new Date().toISOString()}] Inisialisasi pada Frasa ${calculatedCurrentPhraseNumber}.`);
-      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
-      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
-      if (!currentPhraseMetadata.epochs) {
-        currentPhraseMetadata.epochs = {};
-      }
+      console.log(`[${new Date().toISOString()}] [INIT] Inisialisasi pada Frasa ${calculatedCurrentPhraseNumber}.`);
+      currentPhraseNumber = calculatedCurrentPhraseNumber;
     }
 
-    currentPhraseNumber = calculatedCurrentPhraseNumber;
-    const currentPhraseStartEpoch = getStartEpochForPhrase(currentPhraseNumber);
+    // ALWAYS load data for current phrase
+    console.log(`[${new Date().toISOString()}] [LOAD] Loading data for phrase ${calculatedCurrentPhraseNumber}...`);
+    let phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
+    let currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
+
+    console.log(`[${new Date().toISOString()}] [LOAD] Loaded ${Object.keys(phraseMonitoringData).length} validators from storage`);
+
+    if (!currentPhraseMetadata.epochs) {
+      currentPhraseMetadata.epochs = {};
+    }
+
+    const currentPhraseStartEpoch = getStartEpochForPhrase(calculatedCurrentPhraseNumber);
     const currentPhraseEndEpoch = currentPhraseStartEpoch + PHRASE_DURATION_EPOCHS - 1;
 
-    if (Object.keys(currentPhraseMetadata).length === 0 || currentPhraseMetadata.phraseNumber !== currentPhraseNumber) {
+    // Initialize phrase metadata if needed
+    if (Object.keys(currentPhraseMetadata).length === 0 || currentPhraseMetadata.phraseNumber !== calculatedCurrentPhraseNumber) {
       const existingPhraseStartTime = currentPhraseMetadata.phraseStartTime;
       currentPhraseMetadata = {
-        phraseNumber: currentPhraseNumber,
+        phraseNumber: calculatedCurrentPhraseNumber,
         phraseStartEpoch: currentPhraseStartEpoch,
         phraseEndEpoch: currentPhraseEndEpoch,
         phraseStartTime: existingPhraseStartTime || null,
         epochs: {}
       };
-      await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+      await writeJSON(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`, currentPhraseMetadata);
     }
 
     // Ensure current epoch metadata exists
@@ -477,7 +476,7 @@ export default async function handler(
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch] ||
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch].startTime
     )) {
-      console.log(`[${new Date().toISOString()}] [INFO] Metadata global untuk epoch ${lastKnownNetworkEpoch} (frasa ${currentPhraseNumber}) tidak ada/tidak lengkap. Mencoba mengambil.`);
+      console.log(`[${new Date().toISOString()}] [METADATA] Fetching metadata for epoch ${lastKnownNetworkEpoch}...`);
       const { firstBlock, sessionLength, epochStartTime } = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
 
       if (epochStartTime) {
@@ -487,33 +486,45 @@ export default async function handler(
           firstBlock: firstBlock,
           sessionLength: sessionLength
         };
-        await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
-        console.log(`[${new Date().toISOString()}] [INFO] Berhasil menambahkan/memperbarui detail global untuk epoch ${lastKnownNetworkEpoch} ke metadata frasa ${currentPhraseNumber}.`);
+        await writeJSON(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+        console.log(`[${new Date().toISOString()}] [METADATA] Successfully saved metadata for epoch ${lastKnownNetworkEpoch}.`);
       }
     }
 
     // ===== EPOCH MANAGEMENT LOGIC =====
 
     // Finalize stuck epochs
-    if (currentPhraseNumber >= 1) {
-      await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
+    if (calculatedCurrentPhraseNumber >= 1) {
+      await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, calculatedCurrentPhraseNumber);
     }
 
     // Handle finished epochs
     if (lastKnownNetworkEpoch !== -1 && effectiveCurrentEpoch > lastKnownNetworkEpoch) {
+      console.log(`[${new Date().toISOString()}] ========================================`);
+      console.log(`[${new Date().toISOString()}] [EPOCH-END] Detected epoch transition: ${lastKnownNetworkEpoch} -> ${effectiveCurrentEpoch}`);
+      console.log(`[${new Date().toISOString()}] ========================================`);
+
       for (let epochJustFinished = lastKnownNetworkEpoch; epochJustFinished < effectiveCurrentEpoch; epochJustFinished++) {
         const phraseOfFinishedEpoch = calculatePhraseNumber(epochJustFinished);
         if (phraseOfFinishedEpoch > 0) {
+          console.log(`[${new Date().toISOString()}] [EPOCH-END] Processing finished epoch ${epochJustFinished}...`);
           await handleApiHelperEpochEnd(phraseMonitoringData, epochJustFinished, phraseOfFinishedEpoch);
         }
       }
+
+      console.log(`[${new Date().toISOString()}] [EPOCH-END] All finished epochs processed and saved.`);
     }
 
     // Handle new epoch start
     let epochTransitioned = false;
     if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) &&
       (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
-      await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber, activeValidatorsSet);
+
+      console.log(`[${new Date().toISOString()}] ========================================`);
+      console.log(`[${new Date().toISOString()}] [NEW-EPOCH] Initializing new epoch ${effectiveCurrentEpoch}...`);
+      console.log(`[${new Date().toISOString()}] ========================================`);
+
+      await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, calculatedCurrentPhraseNumber, activeValidatorsSet);
       epochTransitioned = true;
     }
 
@@ -522,27 +533,32 @@ export default async function handler(
       phraseMonitoringData,
       activeValidatorsSet,
       effectiveCurrentEpoch,
-      currentPhraseNumber
+      calculatedCurrentPhraseNumber
     );
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;
 
-    console.log(`[${new Date().toISOString()}] [run-monitor] Combined monitoring cycle completed successfully`);
+    console.log(`[${new Date().toISOString()}] ========================================`);
+    console.log(`[${new Date().toISOString()}] [run-monitor] Monitoring cycle completed successfully`);
+    console.log(`[${new Date().toISOString()}] [run-monitor] Epoch: ${effectiveCurrentEpoch} | Phrase: ${calculatedCurrentPhraseNumber}`);
+    console.log(`[${new Date().toISOString()}] [run-monitor] Epoch transitioned: ${epochTransitioned} | Uptime changed: ${uptimeDataChanged}`);
+    console.log(`[${new Date().toISOString()}] ========================================`);
 
     return res.status(200).json({
       success: true,
       currentEpoch: effectiveCurrentEpoch,
-      currentPhrase: currentPhraseNumber,
+      currentPhrase: calculatedCurrentPhraseNumber,
       activeValidatorsCount: activeValidatorsSet.size,
       epochTransitioned,
       uptimeDataChanged,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[run-monitor] Error:', error);
+    console.error(`[${new Date().toISOString()}] [run-monitor] ERROR:`, error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     });
   }
 }
