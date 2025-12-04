@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON } from '../storage/blob.js';
+import { readJSON } from '../storage/storage.js';
 import { getSessionProgress } from './polkadot-rpc.js';
 
 /**

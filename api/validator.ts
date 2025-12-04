@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, listBlobs } from '../storage/blob.js';
+import { readJSON, listBlobs } from '../storage/storage.js';
 
 /**
  * API Endpoint: /api/validator/:address

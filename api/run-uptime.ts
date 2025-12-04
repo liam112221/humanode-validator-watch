@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { readJSON, writeJSON } from '../storage/blob.js';
+import { readJSON, writeJSON } from '../storage/storage.js';
 import { getActiveValidators, getCurrentEpoch } from './polkadot-rpc.js';
 
 // Global Constants (will be loaded from config)
