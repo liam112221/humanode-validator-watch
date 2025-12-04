@@ -1,10 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle, Clock, Grid3x3, TrendingUp, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Navigation from "@/components/Navigation";
 import { useState } from "react";
 
 type EpochData = {
@@ -123,25 +120,25 @@ const ValidatorDetail = () => {
   const getEpochStatusColor = (status: string): string => {
     switch (status) {
       case "PASS_API_HELPER":
-        return "bg-green-500";
+        return "bg-emerald-500";
       case "FAIL_API_HELPER":
         return "bg-red-500";
       case "BERJALAN":
-        return "bg-blue-500 animate-pulse";
+        return "bg-gradient-to-r from-orange-500 to-pink-500";
       case "NO_DATA":
-        return "bg-gray-300";
+        return "bg-zinc-800";
       default:
-        return "bg-gray-400";
+        return "bg-zinc-700";
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">Loading validator data...</p>
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-zinc-400">Loading validator data...</p>
           </div>
         </div>
       </div>
@@ -150,263 +147,358 @@ const ValidatorDetail = () => {
 
   if (error || data?.errorMessage) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container mx-auto px-4">
-          <Button
-            variant="ghost"
-            className="mb-4"
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
+        {/* Ambient Gradient Background */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-red-500/20 via-orange-500/20 to-transparent rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
+          <button
             onClick={() => navigate("/")}
+            className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm group"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive">
-                {data?.errorMessage || (error as Error).message}
-              </p>
-            </CardContent>
-          </Card>
+            <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Dashboard</span>
+          </button>
+
+          <div className="bg-red-900/20 backdrop-blur-sm rounded-2xl p-6 border border-red-500/50">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-red-500/20 rounded-xl border border-red-500/30">
+                <AlertCircle className="size-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl mb-2">Error Loading Validator</h3>
+                <p className="text-red-400">
+                  {data?.errorMessage || (error as Error).message}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="container mx-auto px-4 max-w-7xl">
-        <Button
-          variant="ghost"
-          className="mb-4"
-          onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Ambient Gradient Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-transparent rounded-full blur-3xl" />
+      </div>
 
-          {networkStatus?.webServerEpochProgress && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>
-                  Current Network Epoch Progress (Epoch{" "}
-                  {networkStatus.webServerEpochProgress.currentEpochSystem})
-                </CardTitle>
-                <CardDescription>
-                  Live epoch progress from Humanode network
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(
-                            0,
-                            networkStatus.webServerEpochProgress.percentageCompleted
-                          )
-                        ).toFixed(2)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {networkStatus.webServerEpochProgress.percentageCompleted.toFixed(2)}%
-                    {" "}completed
-                  </p>
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-zinc-800/50 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-[#0a0a0a] rounded-sm" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Blocks in Epoch</p>
-                    <p className="font-semibold">
-                      {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()}
-                      {" / "}
-                      {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Remaining Blocks</p>
-                    <p className="font-semibold">
-                      {networkStatus.webServerEpochProgress.remainingBlocksInEpoch.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Estimated Next Epoch In</p>
-                    <p className="font-semibold">
-                      {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <p className="text-muted-foreground">Estimated Epoch Completion Time</p>
-                    <p className="font-semibold">
-                      {formatDateTime(
-                        networkStatus.webServerEpochProgress.estimatedEpochCompletionTime
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Current Network Block</p>
-                    <p className="font-semibold">
-                      {networkStatus.webServerEpochProgress.currentAbsoluteBlock.toLocaleString()}
-                    </p>
-                  </div>
+                <div>
+                  <h1 className="text-xl">Humanode Monitor</h1>
+                  <p className="text-xs text-zinc-500">Validator Monitoring Dashboard</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <header className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Validator Detail
-            </h1>
-            <p className="text-sm text-muted-foreground font-mono break-all">
-            {data?.validatorAddress}
-          </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => navigate("/")}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800 transition-all text-sm"
+                >
+                  Dashboard
+                </button>
+                <button className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all text-sm">
+                  Recap
+                </button>
+              </div>
+            </div>
+          </div>
         </header>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Current Phrase Information</CardTitle>
-            <CardDescription>Phrase {data?.latestPhraseNumber}</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate("/")}
+            className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm group"
+          >
+            <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Dashboard</span>
+          </button>
+
+          {/* Network Epoch Progress */}
+          {networkStatus?.webServerEpochProgress && (
+            <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
+                    <TrendingUp className="size-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl mb-1">Current Network Epoch Progress</h2>
+                    <p className="text-sm text-zinc-400">
+                      Epoch {networkStatus.webServerEpochProgress.currentEpochSystem}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full relative transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, networkStatus.webServerEpochProgress.percentageCompleted)).toFixed(2)}%`
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-400 animate-pulse opacity-50" />
+                  </div>
+                </div>
+                <p className="text-sm mt-3 text-zinc-400">
+                  {networkStatus.webServerEpochProgress.percentageCompleted.toFixed(2)}% completed • {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()} of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()} blocks
+                </p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                  <p className="text-xs text-zinc-500 mb-2">Blocks in Epoch</p>
+                  <p className="text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
+                    {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                  <p className="text-xs text-zinc-500 mb-2">Remaining Blocks</p>
+                  <p className="text-2xl">
+                    {networkStatus.webServerEpochProgress.remainingBlocksInEpoch.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                  <p className="text-xs text-zinc-500 mb-2">Est. Next Epoch In</p>
+                  <p className="text-2xl">
+                    {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50 md:col-span-2">
+                  <p className="text-xs text-zinc-500 mb-2">Est. Epoch Completion Time</p>
+                  <p className="text-lg">
+                    {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                  <p className="text-xs text-zinc-500 mb-2">Current Network Block</p>
+                  <p className="text-2xl">
+                    {networkStatus.webServerEpochProgress.currentAbsoluteBlock.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Validator Detail Header */}
+          <div className="mb-6">
+            <h2 className="text-lg mb-3 text-zinc-400">Validator Detail</h2>
+            <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 border border-zinc-800/50 inline-block">
+              <code className="text-xs text-orange-400 font-mono break-all">
+                {data?.validatorAddress}
+              </code>
+            </div>
+          </div>
+
+          {/* Current Phrase Info */}
+          <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl border border-emerald-500/20">
+                <Activity className="size-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-xl mb-1">Current Phrase Information</h3>
+                <p className="text-sm text-zinc-400">Phrase {data?.latestPhraseNumber}</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Start Epoch</p>
-                <p className="text-lg font-semibold">{data?.latestPhraseStartEpoch}</p>
+              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                <p className="text-xs text-zinc-500 mb-2">Start Epoch</p>
+                <p className="text-3xl">{data?.latestPhraseStartEpoch}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">End Epoch</p>
-                <p className="text-lg font-semibold">{data?.latestPhraseEndEpoch}</p>
+              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                <p className="text-xs text-zinc-500 mb-2">End Epoch</p>
+                <p className="text-3xl">{data?.latestPhraseEndEpoch}</p>
               </div>
-              <div className="md:col-span-2">
-                <p className="text-sm text-muted-foreground">Phrase Start Time</p>
-                <p className="text-lg font-semibold">
+              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50 md:col-span-2">
+                <p className="text-xs text-zinc-500 mb-2">Phrase Start Time</p>
+                <p className="text-xl">
                   {formatDateTime(data?.actualPhraseStartTimeForDisplay || null)}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Epoch History Grid</CardTitle>
-            <CardDescription>
-              Color-coded epoch status for current phrase
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-14 lg:grid-cols-21 gap-2 mb-4">
+          {/* Epoch History Grid */}
+          <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl border border-blue-500/20">
+                <Grid3x3 className="size-5 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl mb-1">Epoch History Grid</h3>
+                <p className="text-sm text-zinc-400">Color-coded epoch status for current phrase</p>
+              </div>
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-14 lg:grid-cols-21 gap-2 mb-6">
               {data?.allEpochsInLatestPhrase?.map((epoch) => (
                 <div
                   key={epoch.epochNumber}
-                  className={`group relative w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold text-white cursor-pointer transition-transform hover:scale-110 ${getEpochStatusColor(
-                    epoch.status
-                  )}`}
+                  className={`group relative w-10 h-10 rounded-lg flex items-center justify-center text-xs text-white cursor-pointer transition-all hover:scale-110 hover:shadow-lg ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''
+                    }`}
                   title={`Epoch ${epoch.epochNumber}: ${epoch.status}`}
                 >
-                  <span className="opacity-80">
+                  <span className="opacity-80 font-mono">
                     {epoch.epochNumber % 10}
                   </span>
-                  
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-64 bg-popover border border-border rounded-md p-3 shadow-lg text-xs text-popover-foreground">
-                    <p className="font-bold mb-1">Epoch {epoch.epochNumber}</p>
-                    <p><strong>Status:</strong> {epoch.status}</p>
-                    <p><strong>Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}</p>
+
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-64 bg-zinc-900 border border-zinc-700 rounded-xl p-4 shadow-xl text-xs">
+                    <p className="font-bold mb-2 text-white">Epoch {epoch.epochNumber}</p>
+                    <p className="text-zinc-400 mb-1">
+                      <strong className="text-white">Status:</strong> {epoch.status}
+                    </p>
+                    <p className="text-zinc-400 mb-1">
+                      <strong className="text-white">Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}
+                    </p>
                     {epoch.lastApiHelperStateChangeTimestamp && (
-                      <p><strong>Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}</p>
+                      <p className="text-zinc-400">
+                        <strong className="text-white">Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}
+                      </p>
                     )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-4 text-sm">
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/30">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-500"></div>
-                <span>PASS</span>
+                <div className="w-3 h-3 bg-emerald-500 rounded" />
+                <span className="text-xs text-zinc-400">PASS</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-red-500"></div>
-                <span>FAIL</span>
+                <div className="w-3 h-3 bg-red-500 rounded" />
+                <span className="text-xs text-zinc-400">FAIL</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-blue-500 animate-pulse"></div>
-                <span>RUNNING</span>
+                <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded" />
+                <span className="text-xs text-zinc-400">RUNNING</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-gray-300"></div>
-                <span>NO DATA</span>
+                <div className="w-3 h-3 bg-zinc-800 rounded" />
+                <span className="text-xs text-zinc-400">NO DATA</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Phrase History</CardTitle>
-                <CardDescription>
-                  Historical performance across all phrases
-                </CardDescription>
+          {/* Phrase History */}
+          <div className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
+                  <Clock className="size-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl mb-1">Phrase History</h3>
+                  <p className="text-sm text-zinc-400">Historical performance across all phrases</p>
+                </div>
               </div>
-              <Button
-                variant="outline"
+              <button
                 onClick={() => setHistoryExpanded(!historyExpanded)}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-all text-sm"
               >
-                {historyExpanded ? "Collapse" : "Expand"}
-              </Button>
+                {historyExpanded ? (
+                  <>
+                    Collapse
+                    <ChevronUp className="size-4" />
+                  </>
+                ) : (
+                  <>
+                    Expand
+                    <ChevronDown className="size-4" />
+                  </>
+                )}
+              </button>
             </div>
-          </CardHeader>
-          {historyExpanded && (
-            <CardContent>
-              <div className="space-y-4">
+
+            {/* Phrase Cards */}
+            {historyExpanded && (
+              <div className="space-y-3">
                 {data?.phraseHistory?.map((phrase) => (
-                  <Card key={phrase.phraseNumber} className="bg-muted/50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">
-                        Phrase {phrase.phraseNumber}
+                  <div
+                    key={phrase.phraseNumber}
+                    className={`rounded-xl p-5 border transition-all ${phrase.isCurrentPhrase
+                      ? 'bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-orange-500/50 shadow-lg shadow-orange-500/10'
+                      : 'bg-zinc-800/30 border-zinc-700/50 hover:border-zinc-600/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">
+                          Phrase {phrase.phraseNumber}
+                        </span>
                         {phrase.isCurrentPhrase && (
-                          <span className="ml-2 text-sm text-primary">(Current)</span>
+                          <span className="px-2 py-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs rounded-full">
+                            Current
+                          </span>
                         )}
-                      </CardTitle>
-                      <CardDescription>
-                        Epochs {phrase.startEpoch} - {phrase.endEpoch}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <p className="text-2xl font-bold text-green-600">{phrase.passCount}</p>
-                          <p className="text-sm text-muted-foreground">PASS</p>
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold text-red-600">{phrase.failCount}</p>
-                          <p className="text-sm text-muted-foreground">FAIL</p>
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold text-gray-600">{phrase.otherCount}</p>
-                          <p className="text-sm text-muted-foreground">OTHER</p>
-                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <p className="text-xs text-zinc-500">
+                        Epochs {phrase.startEpoch} - {phrase.endEpoch}
+                      </p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <CheckCircle className="size-4 text-emerald-400" />
+                          <span className="text-2xl">{phrase.passCount}</span>
+                        </div>
+                        <p className="text-xs text-zinc-500">PASS</p>
+                      </div>
+                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <AlertCircle className="size-4 text-red-400" />
+                          <span className="text-2xl">{phrase.failCount}</span>
+                        </div>
+                        <p className="text-xs text-zinc-500">FAIL</p>
+                      </div>
+                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <Activity className="size-4 text-zinc-400" />
+                          <span className="text-2xl">{phrase.otherCount}</span>
+                        </div>
+                        <p className="text-xs text-zinc-500">OTHER</p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </CardContent>
-          )}
-        </Card>
+            )}
+          </div>
 
-        <footer className="text-center py-8 mt-8">
-          <p className="text-sm text-muted-foreground">&copy; 2025 crxanode. All rights reserved.</p>
-        </footer>
+          {/* Footer */}
+          <footer className="mt-8 pt-6 border-t border-zinc-800/50 text-center text-sm text-zinc-600">
+            <p>&copy; 2025 crxanode. All rights reserved.</p>
+            <p className="mt-2 text-xs">Last updated: {new Date().toLocaleString()}</p>
+          </footer>
+        </div>
       </div>
     </div>
   );
