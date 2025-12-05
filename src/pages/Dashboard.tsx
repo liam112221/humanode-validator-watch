@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, Check, Search, Users, Activity, Clock, TrendingUp } from "lucide-react";
+import { Copy, Check, Search, Users, Activity, Clock, TrendingUp, Box } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import Navigation from "@/components/Navigation";
 import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
+
+const AVG_BLOCK_TIME_SECONDS = 6;
 
 type ValidatorData = {
   address: string;
@@ -23,6 +26,26 @@ type DashboardData = {
   totalValidators: number;
   constants: any;
   timestamp: string;
+  currentBlock?: number;
+};
+
+const AnimatedBlockNumber = ({ block }: { block: number }) => {
+  return (
+    <div className="relative overflow-hidden h-8 sm:h-12 flex items-center">
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={block}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="absolute text-xl sm:text-3xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+        >
+          {block.toLocaleString()}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
 };
 
 const Dashboard = () => {
@@ -30,6 +53,9 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [currentBlock, setCurrentBlock] = useState<number>(0);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [blockProgress, setBlockProgress] = useState<number>(0);
 
   const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ["dashboard"],
@@ -40,6 +66,45 @@ const Dashboard = () => {
     },
     refetchInterval: 60000,
   });
+
+  // Initialize and update block number
+  useEffect(() => {
+    if (data?.currentBlock) {
+      setCurrentBlock(data.currentBlock);
+    }
+  }, [data?.currentBlock]);
+
+  // Block timer - increment every AVG_BLOCK_TIME_SECONDS
+  useEffect(() => {
+    const blockInterval = setInterval(() => {
+      setCurrentBlock((prev) => prev + 1);
+      setBlockProgress(0);
+    }, AVG_BLOCK_TIME_SECONDS * 1000);
+
+    return () => clearInterval(blockInterval);
+  }, []);
+
+  // Progress bar for next block
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      setBlockProgress((prev) => {
+        const increment = (100 / AVG_BLOCK_TIME_SECONDS);
+        const next = prev + increment;
+        return next >= 100 ? 100 : next;
+      });
+    }, 1000);
+
+    return () => clearInterval(progressInterval);
+  }, []);
+
+  // Real-time clock - update every second
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
 
   const formatDateTime = (isoString: string | null): string => {
     if (!isoString) return "N/A";
@@ -58,6 +123,19 @@ const Dashboard = () => {
     } catch {
       return "N/A";
     }
+  };
+
+  const formatCurrentTime = (): string => {
+    return new Intl.DateTimeFormat("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Jakarta",
+    }).format(currentTime).replace(/\//g, "-");
   };
 
   const copyToClipboard = async (text: string) => {
@@ -122,7 +200,30 @@ const Dashboard = () => {
           </header>
 
           {/* Stats Grid */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+          <section className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+            {/* Current Block */}
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
+                  <Box className="size-4 sm:size-5 text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Current Block</p>
+                  <AnimatedBlockNumber block={currentBlock} />
+                  <div className="mt-2 w-full bg-muted/30 rounded-full h-1 overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
+                      style={{ width: `${blockProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    ~{AVG_BLOCK_TIME_SECONDS}s per block
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Total Tracked */}
             <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
               <div className="flex items-start gap-3 sm:gap-4">
@@ -169,15 +270,18 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Last Updated */}
+            {/* Live Time */}
             <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
                   <Clock className="size-4 sm:size-5 text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Last Updated</p>
-                  <p className="text-xs sm:text-sm truncate">{formatDateTime(data?.timestamp || null)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Live Time</p>
+                  <p className="text-xs sm:text-sm font-mono">{formatCurrentTime()}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    WIB (GMT+7)
+                  </p>
                 </div>
               </div>
             </div>
