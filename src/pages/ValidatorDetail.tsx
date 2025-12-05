@@ -64,20 +64,42 @@ type NetworkStatusData = {
 };
 
 const AnimatedBlockNumber = ({ block }: { block: number }) => {
+  const blockString = block.toLocaleString();
+  const digits = blockString.split('');
+
   return (
-    <div className="relative overflow-hidden h-8 sm:h-10 flex items-center">
-      <AnimatePresence mode="popLayout">
-        <motion.span
-          key={block}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
-        >
-          {block.toLocaleString()}
-        </motion.span>
-      </AnimatePresence>
+    <div className="relative flex items-center h-8 sm:h-10">
+      {digits.map((char, index) => {
+        // For commas and non-numeric characters, don't animate
+        if (char === ',' || char === '.') {
+          return (
+            <span
+              key={`separator-${index}`}
+              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+            >
+              {char}
+            </span>
+          );
+        }
+
+        // For digits, animate individually
+        return (
+          <div key={`digit-${index}`} className="relative overflow-hidden inline-block" style={{ width: '0.6em' }}>
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={`${index}-${char}`}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="absolute inset-0 flex items-center justify-center text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+              >
+                {char}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -89,6 +111,13 @@ const ValidatorDetail = () => {
   const [currentBlock, setCurrentBlock] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [blockProgress, setBlockProgress] = useState<number>(0);
+
+  // Local real-time epoch data
+  const [currentBlockInEpoch, setCurrentBlockInEpoch] = useState<number>(0);
+  const [remainingBlocksInEpoch, setRemainingBlocksInEpoch] = useState<number>(0);
+  const [nextEpochETASec, setNextEpochETASec] = useState<number>(0);
+  const [percentageCompleted, setPercentageCompleted] = useState<number>(0);
+  const [blocksInEpoch, setBlocksInEpoch] = useState<number>(2400); // default value
 
   const { data, isLoading, error } = useQuery<ValidatorDetailData>({
     queryKey: ["validator", address],
@@ -118,15 +147,35 @@ const ValidatorDetail = () => {
     }
   }, [networkStatus?.webServerEpochProgress?.currentAbsoluteBlock]);
 
+  // Initialize epoch data from network status
+  useEffect(() => {
+    if (networkStatus?.webServerEpochProgress) {
+      const progress = networkStatus.webServerEpochProgress;
+      setCurrentBlockInEpoch(progress.currentBlockInEpoch);
+      setRemainingBlocksInEpoch(progress.remainingBlocksInEpoch);
+      setNextEpochETASec(progress.nextEpochETASec);
+      setPercentageCompleted(progress.percentageCompleted);
+      setBlocksInEpoch(progress.blocksInEpoch);
+    }
+  }, [networkStatus?.webServerEpochProgress]);
+
   // Block timer - increment every AVG_BLOCK_TIME_SECONDS
   useEffect(() => {
     const blockInterval = setInterval(() => {
       setCurrentBlock((prev) => prev + 1);
+      setCurrentBlockInEpoch((prev) => prev + 1);
+      setRemainingBlocksInEpoch((prev) => Math.max(0, prev - 1));
       setBlockProgress(0);
+
+      // Recalculate percentage
+      setPercentageCompleted((prev) => {
+        const newCurrent = currentBlockInEpoch + 1;
+        return (newCurrent / blocksInEpoch) * 100;
+      });
     }, AVG_BLOCK_TIME_SECONDS * 1000);
 
     return () => clearInterval(blockInterval);
-  }, []);
+  }, [currentBlockInEpoch, blocksInEpoch]);
 
   // Progress bar for next block
   useEffect(() => {
@@ -139,6 +188,15 @@ const ValidatorDetail = () => {
     }, 1000);
 
     return () => clearInterval(progressInterval);
+  }, []);
+
+  // Countdown timer for next epoch - update every second
+  useEffect(() => {
+    const countdownInterval = setInterval(() => {
+      setNextEpochETASec((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
   }, []);
 
   // Real-time clock - update every second
@@ -273,48 +331,6 @@ const ValidatorDetail = () => {
             <span>Back to Dashboard</span>
           </button>
 
-          {/* Real-time Block & Time Info */}
-          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {/* Current Block */}
-            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
-                  <Box className="size-4 sm:size-5 text-orange-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Current Network Block</p>
-                  <AnimatedBlockNumber block={currentBlock} />
-                  <div className="mt-2 w-full bg-muted/30 rounded-full h-1 overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
-                      style={{ width: `${blockProgress}%` }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Next block in ~{AVG_BLOCK_TIME_SECONDS}s
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Live Time */}
-            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
-                  <Clock className="size-4 sm:size-5 text-purple-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Live Time (WIB)</p>
-                  <p className="text-sm sm:text-lg font-mono">{formatCurrentTime()}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    GMT+7 • Updates every second
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Network Epoch Progress */}
           {networkStatus?.webServerEpochProgress && (
             <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
@@ -338,14 +354,14 @@ const ValidatorDetail = () => {
                   <div
                     className="h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full relative transition-all duration-500"
                     style={{
-                      width: `${Math.min(100, Math.max(0, networkStatus.webServerEpochProgress.percentageCompleted)).toFixed(2)}%`
+                      width: `${Math.min(100, Math.max(0, percentageCompleted)).toFixed(2)}%`
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-400 animate-pulse opacity-50" />
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm mt-3 text-muted-foreground">
-                  {networkStatus.webServerEpochProgress.percentageCompleted.toFixed(2)}% completed • {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()} of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()} blocks
+                  {percentageCompleted.toFixed(2)}% completed • {currentBlockInEpoch.toLocaleString()} of {blocksInEpoch.toLocaleString()} blocks
                 </p>
               </div>
 
@@ -354,28 +370,40 @@ const ValidatorDetail = () => {
                 <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Blocks in Epoch</p>
                   <p className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
-                    {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()}
+                    {currentBlockInEpoch.toLocaleString()}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()}
+                    of {blocksInEpoch.toLocaleString()}
                   </p>
                 </div>
                 <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Remaining Blocks</p>
                   <p className="text-lg sm:text-2xl">
-                    {networkStatus.webServerEpochProgress.remainingBlocksInEpoch.toLocaleString()}
+                    {remainingBlocksInEpoch.toLocaleString()}
                   </p>
                 </div>
                 <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Next Epoch In</p>
                   <p className="text-lg sm:text-2xl">
-                    {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
+                    {formatDuration(nextEpochETASec)}
                   </p>
                 </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-3">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Epoch Completion Time</p>
                   <p className="text-sm sm:text-lg">
                     {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
+                  </p>
+                </div>
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
+                  <div className="overflow-hidden">
+                    <AnimatedBlockNumber block={currentBlock} />
+                  </div>
+                </div>
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Live Time (WIB)</p>
+                  <p className="text-sm sm:text-lg font-mono">
+                    {formatCurrentTime()}
                   </p>
                 </div>
               </div>
