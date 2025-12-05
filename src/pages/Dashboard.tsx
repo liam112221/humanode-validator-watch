@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, Search, Users, Activity, Clock, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 
 type ValidatorData = {
   address: string;
@@ -81,17 +82,7 @@ const Dashboard = () => {
   const activeCount = data?.validators.filter(v => v.lastApiHelperState === "active").length || 0;
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <Navigation />
-        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading dashboard data...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
