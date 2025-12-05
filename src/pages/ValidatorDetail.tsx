@@ -68,14 +68,14 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
   const digits = blockString.split('');
 
   return (
-    <div className="flex items-center justify-start gap-0.5">
+    <div className="flex items-center justify-start gap-1">
       {digits.map((char, index) => {
         // For commas and non-numeric characters, don't animate
         if (char === ',' || char === '.') {
           return (
             <span
               key={`separator-${index}`}
-              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent px-0.5"
+              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent px-1"
             >
               {char}
             </span>
@@ -84,7 +84,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
 
         // For digits, animate individually
         return (
-          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10" style={{ width: '1em' }}>
+          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10 min-w-[0.7em]">
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={`${index}-${char}`}
@@ -396,9 +396,7 @@ const ValidatorDetail = () => {
                 </div>
                 <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
-                  <div className="overflow-hidden">
-                    <AnimatedBlockNumber block={currentBlock} />
-                  </div>
+                  <AnimatedBlockNumber block={currentBlock} />
                 </div>
                 <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Live Time (WIB)</p>
