@@ -127,19 +127,19 @@ const ValidatorDetail = () => {
       case "BERJALAN":
         return "bg-gradient-to-r from-orange-500 to-pink-500";
       case "NO_DATA":
-        return "bg-zinc-800";
+        return "bg-muted";
       default:
-        return "bg-zinc-700";
+        return "bg-muted";
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="min-h-screen bg-background text-foreground">
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-zinc-400">Loading validator data...</p>
+            <p className="text-muted-foreground">Loading validator data...</p>
           </div>
         </div>
       </div>
@@ -148,7 +148,7 @@ const ValidatorDetail = () => {
 
   if (error || data?.errorMessage) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="min-h-screen bg-background text-foreground">
         {/* Ambient Gradient Background */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-red-500/20 via-orange-500/20 to-transparent rounded-full blur-3xl" />
@@ -157,20 +157,20 @@ const ValidatorDetail = () => {
         <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
           <button
             onClick={() => navigate("/")}
-            className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm group"
+            className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm group"
           >
             <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Dashboard</span>
           </button>
 
-          <div className="bg-red-900/20 backdrop-blur-sm rounded-2xl p-6 border border-red-500/50">
+          <div className="bg-destructive/20 backdrop-blur-sm rounded-2xl p-6 border border-destructive/50">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-red-500/20 rounded-xl border border-red-500/30">
-                <AlertCircle className="size-6 text-red-400" />
+              <div className="p-3 bg-destructive/20 rounded-xl border border-destructive/30">
+                <AlertCircle className="size-6 text-destructive" />
               </div>
               <div>
                 <h3 className="text-xl mb-2">Error Loading Validator</h3>
-                <p className="text-red-400">
+                <p className="text-destructive">
                   {data?.errorMessage || (error as Error).message}
                 </p>
               </div>
@@ -182,7 +182,7 @@ const ValidatorDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Ambient Gradient Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent rounded-full blur-3xl" />
@@ -198,7 +198,7 @@ const ValidatorDetail = () => {
           {/* Back Button */}
           <button
             onClick={() => navigate("/")}
-            className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm group"
+            className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm group"
           >
             <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Dashboard</span>
@@ -206,15 +206,15 @@ const ValidatorDetail = () => {
 
           {/* Network Epoch Progress */}
           {networkStatus?.webServerEpochProgress && (
-            <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+            <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
               <div className="flex items-start justify-between mb-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
-                    <TrendingUp className="size-5 text-orange-400" />
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
+                    <TrendingUp className="size-4 sm:size-5 text-orange-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl mb-1">Current Network Epoch Progress</h2>
-                    <p className="text-sm text-zinc-400">
+                    <h2 className="text-lg sm:text-xl mb-1">Current Network Epoch Progress</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Epoch {networkStatus.webServerEpochProgress.currentEpochSystem}
                     </p>
                   </div>
@@ -223,7 +223,7 @@ const ValidatorDetail = () => {
 
               {/* Progress Bar */}
               <div className="mb-6">
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full relative transition-all duration-500"
                     style={{
@@ -233,43 +233,43 @@ const ValidatorDetail = () => {
                     <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-400 animate-pulse opacity-50" />
                   </div>
                 </div>
-                <p className="text-sm mt-3 text-zinc-400">
+                <p className="text-xs sm:text-sm mt-3 text-muted-foreground">
                   {networkStatus.webServerEpochProgress.percentageCompleted.toFixed(2)}% completed • {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()} of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()} blocks
                 </p>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                  <p className="text-xs text-zinc-500 mb-2">Blocks in Epoch</p>
-                  <p className="text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Blocks in Epoch</p>
+                  <p className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
                     {networkStatus.webServerEpochProgress.currentBlockInEpoch.toLocaleString()}
                   </p>
-                  <p className="text-xs text-zinc-600">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
                     of {networkStatus.webServerEpochProgress.blocksInEpoch.toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                  <p className="text-xs text-zinc-500 mb-2">Remaining Blocks</p>
-                  <p className="text-2xl">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Remaining Blocks</p>
+                  <p className="text-lg sm:text-2xl">
                     {networkStatus.webServerEpochProgress.remainingBlocksInEpoch.toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                  <p className="text-xs text-zinc-500 mb-2">Est. Next Epoch In</p>
-                  <p className="text-2xl">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Next Epoch In</p>
+                  <p className="text-lg sm:text-2xl">
                     {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
                   </p>
                 </div>
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50 md:col-span-2">
-                  <p className="text-xs text-zinc-500 mb-2">Est. Epoch Completion Time</p>
-                  <p className="text-lg">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-2">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Epoch Completion Time</p>
+                  <p className="text-sm sm:text-lg">
                     {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
                   </p>
                 </div>
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                  <p className="text-xs text-zinc-500 mb-2">Current Network Block</p>
-                  <p className="text-2xl">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-1">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
+                  <p className="text-lg sm:text-2xl">
                     {networkStatus.webServerEpochProgress.currentAbsoluteBlock.toLocaleString()}
                   </p>
                 </div>
@@ -279,38 +279,38 @@ const ValidatorDetail = () => {
 
           {/* Validator Detail Header */}
           <div className="mb-6">
-            <h2 className="text-lg mb-3 text-zinc-400">Validator Detail</h2>
-            <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 border border-zinc-800/50 inline-block">
-              <code className="text-xs text-orange-400 font-mono break-all">
+            <h2 className="text-base sm:text-lg mb-3 text-muted-foreground">Validator Detail</h2>
+            <div className="bg-card/50 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-border/50 inline-block max-w-full">
+              <code className="text-[10px] sm:text-xs text-orange-400 font-mono break-all">
                 {data?.validatorAddress}
               </code>
             </div>
           </div>
 
           {/* Current Phrase Info */}
-          <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl border border-emerald-500/20">
-                <Activity className="size-5 text-emerald-400" />
+          <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
+            <div className="flex items-start gap-3 sm:gap-4 mb-6">
+              <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl border border-emerald-500/20">
+                <Activity className="size-4 sm:size-5 text-emerald-400" />
               </div>
               <div>
-                <h3 className="text-xl mb-1">Current Phrase Information</h3>
-                <p className="text-sm text-zinc-400">Phrase {data?.latestPhraseNumber}</p>
+                <h3 className="text-lg sm:text-xl mb-1">Current Phrase Information</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Phrase {data?.latestPhraseNumber}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                <p className="text-xs text-zinc-500 mb-2">Start Epoch</p>
-                <p className="text-3xl">{data?.latestPhraseStartEpoch}</p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Start Epoch</p>
+                <p className="text-xl sm:text-3xl">{data?.latestPhraseStartEpoch}</p>
               </div>
-              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
-                <p className="text-xs text-zinc-500 mb-2">End Epoch</p>
-                <p className="text-3xl">{data?.latestPhraseEndEpoch}</p>
+              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">End Epoch</p>
+                <p className="text-xl sm:text-3xl">{data?.latestPhraseEndEpoch}</p>
               </div>
-              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50 md:col-span-2">
-                <p className="text-xs text-zinc-500 mb-2">Phrase Start Time</p>
-                <p className="text-xl">
+              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Phrase Start Time</p>
+                <p className="text-sm sm:text-xl">
                   {formatDateTime(data?.actualPhraseStartTimeForDisplay || null)}
                 </p>
               </div>
@@ -318,42 +318,41 @@ const ValidatorDetail = () => {
           </div>
 
           {/* Epoch History Grid */}
-          <div className="mb-6 bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl border border-blue-500/20">
-                <Grid3x3 className="size-5 text-blue-400" />
+          <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50">
+            <div className="flex items-start gap-3 sm:gap-4 mb-6">
+              <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl border border-blue-500/20">
+                <Grid3x3 className="size-4 sm:size-5 text-blue-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl mb-1">Epoch History Grid</h3>
-                <p className="text-sm text-zinc-400">Color-coded epoch status for current phrase</p>
+                <h3 className="text-lg sm:text-xl mb-1">Epoch History Grid</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Color-coded epoch status for current phrase</p>
               </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-14 lg:grid-cols-21 gap-2 mb-6">
+            {/* Grid - Square blocks with full epoch numbers */}
+            <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-14 xl:grid-cols-21 gap-1 mb-6">
               {data?.allEpochsInLatestPhrase?.map((epoch) => (
                 <div
                   key={epoch.epochNumber}
-                  className={`group relative w-10 h-10 rounded-lg flex items-center justify-center text-xs text-white cursor-pointer transition-all hover:scale-110 hover:shadow-lg ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''
-                    }`}
+                  className={`group relative aspect-square rounded flex items-center justify-center text-[9px] sm:text-[10px] text-white cursor-pointer transition-all hover:scale-110 hover:shadow-lg hover:z-10 ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''}`}
                   title={`Epoch ${epoch.epochNumber}: ${epoch.status}`}
                 >
-                  <span className="opacity-80 font-mono">
-                    {epoch.epochNumber % 10}
+                  <span className="opacity-90 font-mono font-medium">
+                    {epoch.epochNumber}
                   </span>
 
                   {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-64 bg-zinc-900 border border-zinc-700 rounded-xl p-4 shadow-xl text-xs">
-                    <p className="font-bold mb-2 text-white">Epoch {epoch.epochNumber}</p>
-                    <p className="text-zinc-400 mb-1">
-                      <strong className="text-white">Status:</strong> {epoch.status}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-48 sm:w-64 bg-popover border border-border rounded-xl p-3 sm:p-4 shadow-xl text-xs">
+                    <p className="font-bold mb-2 text-foreground">Epoch {epoch.epochNumber}</p>
+                    <p className="text-muted-foreground mb-1">
+                      <strong className="text-foreground">Status:</strong> {epoch.status}
                     </p>
-                    <p className="text-zinc-400 mb-1">
-                      <strong className="text-white">Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}
+                    <p className="text-muted-foreground mb-1">
+                      <strong className="text-foreground">Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}
                     </p>
                     {epoch.lastApiHelperStateChangeTimestamp && (
-                      <p className="text-zinc-400">
-                        <strong className="text-white">Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}
+                      <p className="text-muted-foreground">
+                        <strong className="text-foreground">Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}
                       </p>
                     )}
                   </div>
@@ -362,117 +361,106 @@ const ValidatorDetail = () => {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-4 bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/30">
+            <div className="flex flex-wrap gap-3 sm:gap-4 bg-card/30 rounded-xl p-3 sm:p-4 border border-border/30">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-xs text-zinc-400">PASS</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">PASS</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded" />
-                <span className="text-xs text-zinc-400">FAIL</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">FAIL</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded" />
-                <span className="text-xs text-zinc-400">RUNNING</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">RUNNING</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-zinc-800 rounded" />
-                <span className="text-xs text-zinc-400">NO DATA</span>
+                <div className="w-3 h-3 bg-muted rounded" />
+                <span className="text-[10px] sm:text-xs text-muted-foreground">NO DATA</span>
               </div>
             </div>
           </div>
 
           {/* Phrase History */}
-          <div className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50">
+          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50">
             <div className="flex items-start justify-between mb-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
-                  <Clock className="size-5 text-purple-400" />
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
+                  <Clock className="size-4 sm:size-5 text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl mb-1">Phrase History</h3>
-                  <p className="text-sm text-zinc-400">Historical performance across all phrases</p>
+                  <h3 className="text-lg sm:text-xl mb-1">Phrase History</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Historical performance across all phrases</p>
                 </div>
               </div>
               <button
                 onClick={() => setHistoryExpanded(!historyExpanded)}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-all text-sm"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-card hover:bg-muted rounded-lg border border-border transition-all text-xs sm:text-sm"
               >
                 {historyExpanded ? (
                   <>
-                    Collapse
+                    <span className="hidden sm:inline">Collapse</span>
                     <ChevronUp className="size-4" />
                   </>
                 ) : (
                   <>
-                    Expand
+                    <span className="hidden sm:inline">Expand</span>
                     <ChevronDown className="size-4" />
                   </>
                 )}
               </button>
             </div>
 
-            {/* Phrase Cards */}
             {historyExpanded && (
               <div className="space-y-3">
                 {data?.phraseHistory?.map((phrase) => (
                   <div
                     key={phrase.phraseNumber}
-                    className={`rounded-xl p-5 border transition-all ${phrase.isCurrentPhrase
-                      ? 'bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-orange-500/50 shadow-lg shadow-orange-500/10'
-                      : 'bg-zinc-800/30 border-zinc-700/50 hover:border-zinc-600/50'
+                    className={`p-3 sm:p-4 rounded-xl border transition-colors ${phrase.isCurrentPhrase
+                      ? "bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-orange-500/30"
+                      : "bg-card/30 border-border/30 hover:border-border/50"
                       }`}
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <span className="text-sm sm:text-lg font-medium">
                           Phrase {phrase.phraseNumber}
                         </span>
                         {phrase.isCurrentPhrase && (
-                          <span className="px-2 py-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs rounded-full">
+                          <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] sm:text-xs rounded-full border border-orange-500/30">
                             Current
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-500">
-                        Epochs {phrase.startEpoch} - {phrase.endEpoch}
-                      </p>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
-                        <div className="flex items-center justify-center gap-2 mb-1">
-                          <CheckCircle className="size-4 text-emerald-400" />
-                          <span className="text-2xl">{phrase.passCount}</span>
+                      <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <span className="text-muted-foreground">
+                          Epochs {phrase.startEpoch} - {phrase.endEpoch}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="size-3 sm:size-4 text-emerald-400" />
+                          <span className="text-emerald-400">{phrase.passCount}</span>
                         </div>
-                        <p className="text-xs text-zinc-500">PASS</p>
-                      </div>
-                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
-                        <div className="flex items-center justify-center gap-2 mb-1">
-                          <AlertCircle className="size-4 text-red-400" />
-                          <span className="text-2xl">{phrase.failCount}</span>
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="size-3 sm:size-4 text-destructive" />
+                          <span className="text-destructive">{phrase.failCount}</span>
                         </div>
-                        <p className="text-xs text-zinc-500">FAIL</p>
-                      </div>
-                      <div className="text-center bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50">
-                        <div className="flex items-center justify-center gap-2 mb-1">
-                          <Activity className="size-4 text-zinc-400" />
-                          <span className="text-2xl">{phrase.otherCount}</span>
-                        </div>
-                        <p className="text-xs text-zinc-500">OTHER</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            {!historyExpanded && data?.phraseHistory && data.phraseHistory.length > 0 && (
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {data.phraseHistory.length} phrases available. Click expand to view history.
+              </p>
+            )}
           </div>
 
           {/* Footer */}
-          <footer className="mt-8 pt-6 border-t border-zinc-800/50 text-center text-sm text-zinc-600">
+          <footer className="mt-8 pt-6 border-t border-border/50 text-center text-xs sm:text-sm text-muted-foreground">
             <p>&copy; 2025 crxanode. All rights reserved.</p>
-            <p className="mt-2 text-xs">Last updated: {new Date().toLocaleString()}</p>
           </footer>
         </div>
       </div>
