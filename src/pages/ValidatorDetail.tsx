@@ -1,10 +1,13 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertCircle, CheckCircle, Clock, Grid3x3, TrendingUp, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle, Clock, Grid3x3, TrendingUp, ArrowLeft, ChevronDown, ChevronUp, Box } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import Navigation from "@/components/Navigation";
 import ValidatorDetailSkeleton from "@/components/skeletons/ValidatorDetailSkeleton";
+
+const AVG_BLOCK_TIME_SECONDS = 6;
 
 type EpochData = {
   epochNumber: number;
@@ -60,10 +63,32 @@ type NetworkStatusData = {
   webServerEpochProgress: NetworkEpochProgress;
 };
 
+const AnimatedBlockNumber = ({ block }: { block: number }) => {
+  return (
+    <div className="relative overflow-hidden h-8 sm:h-10 flex items-center">
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={block}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="absolute text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+        >
+          {block.toLocaleString()}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const ValidatorDetail = () => {
   const { address } = useParams();
   const navigate = useNavigate();
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [currentBlock, setCurrentBlock] = useState<number>(0);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [blockProgress, setBlockProgress] = useState<number>(0);
 
   const { data, isLoading, error } = useQuery<ValidatorDetailData>({
     queryKey: ["validator", address],
@@ -86,6 +111,45 @@ const ValidatorDetail = () => {
     refetchInterval: 60000,
   });
 
+  // Initialize current block from network status
+  useEffect(() => {
+    if (networkStatus?.webServerEpochProgress?.currentAbsoluteBlock) {
+      setCurrentBlock(networkStatus.webServerEpochProgress.currentAbsoluteBlock);
+    }
+  }, [networkStatus?.webServerEpochProgress?.currentAbsoluteBlock]);
+
+  // Block timer - increment every AVG_BLOCK_TIME_SECONDS
+  useEffect(() => {
+    const blockInterval = setInterval(() => {
+      setCurrentBlock((prev) => prev + 1);
+      setBlockProgress(0);
+    }, AVG_BLOCK_TIME_SECONDS * 1000);
+
+    return () => clearInterval(blockInterval);
+  }, []);
+
+  // Progress bar for next block
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      setBlockProgress((prev) => {
+        const increment = (100 / AVG_BLOCK_TIME_SECONDS);
+        const next = prev + increment;
+        return next >= 100 ? 100 : next;
+      });
+    }, 1000);
+
+    return () => clearInterval(progressInterval);
+  }, []);
+
+  // Real-time clock - update every second
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
+
   const formatDateTime = (isoString: string | null): string => {
     if (!isoString) return "N/A";
     try {
@@ -103,6 +167,19 @@ const ValidatorDetail = () => {
     } catch {
       return "N/A";
     }
+  };
+
+  const formatCurrentTime = (): string => {
+    return new Intl.DateTimeFormat("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Jakarta",
+    }).format(currentTime).replace(/\//g, "-");
   };
 
   const formatDuration = (seconds: number): string => {
@@ -196,6 +273,48 @@ const ValidatorDetail = () => {
             <span>Back to Dashboard</span>
           </button>
 
+          {/* Real-time Block & Time Info */}
+          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {/* Current Block */}
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
+                  <Box className="size-4 sm:size-5 text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Current Network Block</p>
+                  <AnimatedBlockNumber block={currentBlock} />
+                  <div className="mt-2 w-full bg-muted/30 rounded-full h-1 overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
+                      style={{ width: `${blockProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Next block in ~{AVG_BLOCK_TIME_SECONDS}s
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Time */}
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
+                  <Clock className="size-4 sm:size-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Live Time (WIB)</p>
+                  <p className="text-sm sm:text-lg font-mono">{formatCurrentTime()}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    GMT+7 • Updates every second
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Network Epoch Progress */}
           {networkStatus?.webServerEpochProgress && (
             <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
@@ -253,16 +372,10 @@ const ValidatorDetail = () => {
                     {formatDuration(networkStatus.webServerEpochProgress.nextEpochETASec)}
                   </p>
                 </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-2">
+                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-3">
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Epoch Completion Time</p>
                   <p className="text-sm sm:text-lg">
                     {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
-                  </p>
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2 md:col-span-1">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
-                  <p className="text-lg sm:text-2xl">
-                    {networkStatus.webServerEpochProgress.currentAbsoluteBlock.toLocaleString()}
                   </p>
                 </div>
               </div>
