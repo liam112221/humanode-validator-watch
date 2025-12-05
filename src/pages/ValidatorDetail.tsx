@@ -68,7 +68,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
   const digits = blockString.split('');
 
   return (
-    <div className="relative flex items-center h-8 sm:h-10">
+    <div className="flex items-center justify-start">
       {digits.map((char, index) => {
         // For commas and non-numeric characters, don't animate
         if (char === ',' || char === '.') {
@@ -84,7 +84,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
 
         // For digits, animate individually
         return (
-          <div key={`digit-${index}`} className="relative overflow-hidden inline-block" style={{ width: '0.6em' }}>
+          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10" style={{ width: '0.65em' }}>
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={`${index}-${char}`}
@@ -92,7 +92,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -20, opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="absolute inset-0 flex items-center justify-center text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+                className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
               >
                 {char}
               </motion.span>
