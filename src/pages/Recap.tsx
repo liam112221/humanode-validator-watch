@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, TrendingUp, Calendar, CheckCircle } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import RecapSkeleton from "@/components/skeletons/RecapSkeleton";
 
 
 type RecapData = {
@@ -38,17 +39,7 @@ const Recap = () => {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <Navigation />
-        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading recap data...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <RecapSkeleton />;
   }
 
   if (error) {

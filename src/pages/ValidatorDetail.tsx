@@ -4,6 +4,7 @@ import { Activity, AlertCircle, CheckCircle, Clock, Grid3x3, TrendingUp, ArrowLe
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Navigation from "@/components/Navigation";
+import ValidatorDetailSkeleton from "@/components/skeletons/ValidatorDetailSkeleton";
 
 type EpochData = {
   epochNumber: number;
@@ -134,16 +135,7 @@ const ValidatorDetail = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading validator data...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ValidatorDetailSkeleton />;
   }
 
   if (error || data?.errorMessage) {
