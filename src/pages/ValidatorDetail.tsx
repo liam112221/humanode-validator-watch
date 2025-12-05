@@ -68,14 +68,14 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
   const digits = blockString.split('');
 
   return (
-    <div className="flex items-center justify-start">
+    <div className="flex items-center justify-start gap-0.5">
       {digits.map((char, index) => {
         // For commas and non-numeric characters, don't animate
         if (char === ',' || char === '.') {
           return (
             <span
               key={`separator-${index}`}
-              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent px-0.5"
             >
               {char}
             </span>
@@ -84,7 +84,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
 
         // For digits, animate individually
         return (
-          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10" style={{ width: '0.65em' }}>
+          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10" style={{ width: '1em' }}>
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={`${index}-${char}`}
