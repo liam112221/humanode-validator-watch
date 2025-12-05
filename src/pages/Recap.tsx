@@ -39,12 +39,12 @@ const Recap = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="min-h-screen bg-background text-foreground">
         <Navigation />
         <div className="flex items-center justify-center h-[calc(100vh-80px)]">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-zinc-400">Loading recap data...</p>
+            <p className="text-muted-foreground">Loading recap data...</p>
           </div>
         </div>
       </div>
@@ -53,11 +53,11 @@ const Recap = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="min-h-screen bg-background text-foreground">
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-          <div className="bg-red-900/20 backdrop-blur-sm rounded-2xl p-6 border border-red-500/50">
-            <p className="text-red-400">Error loading recap: {(error as Error).message}</p>
+          <div className="bg-destructive/20 backdrop-blur-sm rounded-2xl p-6 border border-destructive/50">
+            <p className="text-destructive">Error loading recap: {(error as Error).message}</p>
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ const Recap = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Ambient Gradient Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent rounded-full blur-3xl" />
@@ -79,10 +79,10 @@ const Recap = () => {
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
           {/* Header */}
           <header className="mb-8 text-center">
-            <h1 className="text-4xl mb-2 bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-4xl mb-2 bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
               Cycle Recap
             </h1>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Rekap siklus dengan statistik per minggu
             </p>
           </header>
@@ -94,20 +94,20 @@ const Recap = () => {
                 <div className="p-2 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-lg border border-orange-500/20">
                   <TrendingUp className="size-5 text-orange-400" />
                 </div>
-                <h2 className="text-2xl">
+                <h2 className="text-xl sm:text-2xl">
                   Siklus Saat Ini (Phrase {data.ongoingCycle.phraseNumber})
                 </h2>
               </div>
 
-              <div className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+              <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
                 <div className="mb-6">
-                  <p className="text-sm text-zinc-400">Total Validator</p>
-                  <p className="text-3xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
+                  <p className="text-sm text-muted-foreground">Total Validator</p>
+                  <p className="text-2xl sm:text-3xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
                     {data.ongoingCycle.totalValidators}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   {/* Week 1 */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -115,18 +115,18 @@ const Recap = () => {
                       <h3 className="text-lg">Minggu 1</h3>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm text-zinc-400">Tanpa Gagal:</span>
+                      <div className="flex justify-between items-center p-3 sm:p-4 bg-card/50 rounded-xl border border-border/50">
+                        <span className="text-xs sm:text-sm text-muted-foreground">Tanpa Gagal:</span>
                         <div className="flex items-center gap-2">
                           <CheckCircle className="size-4 text-emerald-400" />
-                          <span className="text-xl text-emerald-400">
+                          <span className="text-lg sm:text-xl text-emerald-400">
                             {data.ongoingCycle.week1.zeroFails}
                           </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm text-zinc-400">Dengan Gagal:</span>
-                        <span className="text-xl text-orange-400">
+                      <div className="flex justify-between items-center p-3 sm:p-4 bg-card/50 rounded-xl border border-border/50">
+                        <span className="text-xs sm:text-sm text-muted-foreground">Dengan Gagal:</span>
+                        <span className="text-lg sm:text-xl text-orange-400">
                           {data.ongoingCycle.week1.withFails}
                         </span>
                       </div>
@@ -140,18 +140,18 @@ const Recap = () => {
                       <h3 className="text-lg">Minggu 2</h3>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm text-zinc-400">Tanpa Gagal:</span>
+                      <div className="flex justify-between items-center p-3 sm:p-4 bg-card/50 rounded-xl border border-border/50">
+                        <span className="text-xs sm:text-sm text-muted-foreground">Tanpa Gagal:</span>
                         <div className="flex items-center gap-2">
                           <CheckCircle className="size-4 text-emerald-400" />
-                          <span className="text-xl text-emerald-400">
+                          <span className="text-lg sm:text-xl text-emerald-400">
                             {data.ongoingCycle.week2.zeroFails}
                           </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm text-zinc-400">Dengan Gagal:</span>
-                        <span className="text-xl text-orange-400">
+                      <div className="flex justify-between items-center p-3 sm:p-4 bg-card/50 rounded-xl border border-border/50">
+                        <span className="text-xs sm:text-sm text-muted-foreground">Dengan Gagal:</span>
+                        <span className="text-lg sm:text-xl text-orange-400">
                           {data.ongoingCycle.week2.withFails}
                         </span>
                       </div>
@@ -169,67 +169,67 @@ const Recap = () => {
                 <div className="p-2 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-lg border border-emerald-500/20">
                   <BarChart3 className="size-5 text-emerald-400" />
                 </div>
-                <h2 className="text-2xl">Siklus Selesai</h2>
+                <h2 className="text-xl sm:text-2xl">Siklus Selesai</h2>
               </div>
 
               <div className="space-y-4">
                 {data.completedCycles.map((cycle) => (
                   <div
                     key={cycle.phraseNumber}
-                    className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors"
+                    className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors"
                   >
-                    <div className="mb-6">
-                      <h3 className="text-xl mb-1">Phrase {cycle.phraseNumber}</h3>
-                      <p className="text-sm text-zinc-400">
+                    <div className="mb-4 sm:mb-6">
+                      <h3 className="text-lg sm:text-xl mb-1">Phrase {cycle.phraseNumber}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         Total: {cycle.totalValidators} validators
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                       {/* Week 1 Progress */}
-                      <div className="p-5 bg-zinc-800/30 rounded-xl border border-zinc-700/30">
-                        <p className="text-sm text-zinc-400 mb-3">
+                      <div className="p-4 sm:p-5 bg-card/30 rounded-xl border border-border/30">
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                           Lulus Penuh Minggu 1 (42 Epoch)
                         </p>
-                        <p className="text-3xl mb-3">
+                        <p className="text-2xl sm:text-3xl mb-3">
                           {cycle.week1FullPass}{" "}
-                          <span className="text-lg text-zinc-500">
+                          <span className="text-base sm:text-lg text-muted-foreground">
                             / {cycle.totalValidators}
                           </span>
                         </p>
-                        <div className="w-full bg-zinc-700/30 rounded-full h-3 overflow-hidden">
+                        <div className="w-full bg-muted/30 rounded-full h-2 sm:h-3 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-3 rounded-full transition-all duration-500"
+                            className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${(cycle.week1FullPass / cycle.totalValidators) * 100}%`,
                             }}
                           />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
                           {((cycle.week1FullPass / cycle.totalValidators) * 100).toFixed(1)}% completion rate
                         </p>
                       </div>
 
                       {/* Week 2 Progress */}
-                      <div className="p-5 bg-zinc-800/30 rounded-xl border border-zinc-700/30">
-                        <p className="text-sm text-zinc-400 mb-3">
+                      <div className="p-4 sm:p-5 bg-card/30 rounded-xl border border-border/30">
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                           Lulus Penuh Minggu 2 (42 Epoch)
                         </p>
-                        <p className="text-3xl mb-3">
+                        <p className="text-2xl sm:text-3xl mb-3">
                           {cycle.week2FullPass}{" "}
-                          <span className="text-lg text-zinc-500">
+                          <span className="text-base sm:text-lg text-muted-foreground">
                             / {cycle.totalValidators}
                           </span>
                         </p>
-                        <div className="w-full bg-zinc-700/30 rounded-full h-3 overflow-hidden">
+                        <div className="w-full bg-muted/30 rounded-full h-2 sm:h-3 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-orange-500 to-pink-500 h-3 rounded-full transition-all duration-500"
+                            className="bg-gradient-to-r from-orange-500 to-pink-500 h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${(cycle.week2FullPass / cycle.totalValidators) * 100}%`,
                             }}
                           />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
                           {((cycle.week2FullPass / cycle.totalValidators) * 100).toFixed(1)}% completion rate
                         </p>
                       </div>
@@ -242,14 +242,14 @@ const Recap = () => {
 
           {/* Empty State */}
           {!data?.ongoingCycle && (!data?.completedCycles || data.completedCycles.length === 0) && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-12 border border-zinc-800/50 text-center">
-              <BarChart3 className="size-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">Tidak ada data recap yang tersedia.</p>
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-12 border border-border/50 text-center">
+              <BarChart3 className="size-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Tidak ada data recap yang tersedia.</p>
             </div>
           )}
 
           {/* Footer */}
-          <footer className="mt-8 pt-6 border-t border-zinc-800/50 text-center text-sm text-zinc-600">
+          <footer className="mt-8 pt-6 border-t border-border/50 text-center text-sm text-muted-foreground">
             <p>&copy; 2025 crxanode. All rights reserved.</p>
           </footer>
         </div>
