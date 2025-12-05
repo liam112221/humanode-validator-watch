@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertCircle, CheckCircle, Clock, Grid3x3, TrendingUp, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Navigation from "@/components/Navigation";
 
 type EpochData = {
   epochNumber: number;
@@ -190,33 +191,8 @@ const ValidatorDetail = () => {
 
       {/* Content */}
       <div className="relative z-10">
-        {/* Header */}
-        <header className="border-b border-zinc-800/50 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <div className="w-4 h-4 bg-[#0a0a0a] rounded-sm" />
-                </div>
-                <div>
-                  <h1 className="text-xl">Humanode Monitor</h1>
-                  <p className="text-xs text-zinc-500">Validator Monitoring Dashboard</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => navigate("/")}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800 transition-all text-sm"
-                >
-                  Dashboard
-                </button>
-                <button className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all text-sm">
-                  Recap
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* Navigation */}
+        <Navigation />
 
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
           {/* Back Button */}
