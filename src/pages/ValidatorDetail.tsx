@@ -70,21 +70,19 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
   return (
     <div className="flex items-center justify-start gap-1">
       {digits.map((char, index) => {
-        // For commas and non-numeric characters, don't animate
         if (char === ',' || char === '.') {
           return (
             <span
               key={`separator-${index}`}
-              className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent px-1"
+              className="text-lg sm:text-2xl font-handwritten text-primary px-0.5"
             >
               {char}
             </span>
           );
         }
 
-        // For digits, animate individually
         return (
-          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10 min-w-[0.7em]">
+          <div key={`digit-${index}`} className="relative inline-block h-8 sm:h-10 min-w-[0.6em]">
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={`${index}-${char}`}
@@ -92,7 +90,7 @@ const AnimatedBlockNumber = ({ block }: { block: number }) => {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -20, opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent"
+                className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-lg sm:text-2xl font-handwritten text-primary"
               >
                 {char}
               </motion.span>
@@ -112,12 +110,11 @@ const ValidatorDetail = () => {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [blockProgress, setBlockProgress] = useState<number>(0);
 
-  // Local real-time epoch data
   const [currentBlockInEpoch, setCurrentBlockInEpoch] = useState<number>(0);
   const [remainingBlocksInEpoch, setRemainingBlocksInEpoch] = useState<number>(0);
   const [nextEpochETASec, setNextEpochETASec] = useState<number>(0);
   const [percentageCompleted, setPercentageCompleted] = useState<number>(0);
-  const [blocksInEpoch, setBlocksInEpoch] = useState<number>(2400); // default value
+  const [blocksInEpoch, setBlocksInEpoch] = useState<number>(2400);
 
   const { data, isLoading, error } = useQuery<ValidatorDetailData>({
     queryKey: ["validator", address],
@@ -140,14 +137,12 @@ const ValidatorDetail = () => {
     refetchInterval: 60000,
   });
 
-  // Initialize current block from network status
   useEffect(() => {
     if (networkStatus?.webServerEpochProgress?.currentAbsoluteBlock) {
       setCurrentBlock(networkStatus.webServerEpochProgress.currentAbsoluteBlock);
     }
   }, [networkStatus?.webServerEpochProgress?.currentAbsoluteBlock]);
 
-  // Initialize epoch data from network status
   useEffect(() => {
     if (networkStatus?.webServerEpochProgress) {
       const progress = networkStatus.webServerEpochProgress;
@@ -159,7 +154,6 @@ const ValidatorDetail = () => {
     }
   }, [networkStatus?.webServerEpochProgress]);
 
-  // Block timer - increment every AVG_BLOCK_TIME_SECONDS
   useEffect(() => {
     const blockInterval = setInterval(() => {
       setCurrentBlock((prev) => prev + 1);
@@ -167,7 +161,6 @@ const ValidatorDetail = () => {
       setRemainingBlocksInEpoch((prev) => Math.max(0, prev - 1));
       setBlockProgress(0);
 
-      // Recalculate percentage
       setPercentageCompleted((prev) => {
         const newCurrent = currentBlockInEpoch + 1;
         return (newCurrent / blocksInEpoch) * 100;
@@ -177,7 +170,6 @@ const ValidatorDetail = () => {
     return () => clearInterval(blockInterval);
   }, [currentBlockInEpoch, blocksInEpoch]);
 
-  // Progress bar for next block
   useEffect(() => {
     const progressInterval = setInterval(() => {
       setBlockProgress((prev) => {
@@ -190,7 +182,6 @@ const ValidatorDetail = () => {
     return () => clearInterval(progressInterval);
   }, []);
 
-  // Countdown timer for next epoch - update every second
   useEffect(() => {
     const countdownInterval = setInterval(() => {
       setNextEpochETASec((prev) => Math.max(0, prev - 1));
@@ -199,7 +190,6 @@ const ValidatorDetail = () => {
     return () => clearInterval(countdownInterval);
   }, []);
 
-  // Real-time clock - update every second
   useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
@@ -257,11 +247,11 @@ const ValidatorDetail = () => {
   const getEpochStatusColor = (status: string): string => {
     switch (status) {
       case "PASS_API_HELPER":
-        return "bg-emerald-500";
+        return "bg-success";
       case "FAIL_API_HELPER":
-        return "bg-red-500";
+        return "bg-destructive";
       case "BERJALAN":
-        return "bg-gradient-to-r from-orange-500 to-pink-500";
+        return "bg-primary";
       case "NO_DATA":
         return "bg-muted";
       default:
@@ -276,27 +266,23 @@ const ValidatorDetail = () => {
   if (error || data?.errorMessage) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        {/* Ambient Gradient Background */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-red-500/20 via-orange-500/20 to-transparent rounded-full blur-3xl" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
           <button
             onClick={() => navigate("/")}
             className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm group"
           >
             <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
+            <span className="font-handwritten">Back to Dashboard</span>
           </button>
 
-          <div className="bg-destructive/20 backdrop-blur-sm rounded-2xl p-6 border border-destructive/50">
+          <div className="bg-card rounded-2xl p-6 border-2 border-destructive shadow-paper">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-destructive/20 rounded-xl border border-destructive/30">
+              <div className="p-3 bg-destructive/20 rounded-xl border-2 border-destructive/30">
                 <AlertCircle className="size-6 text-destructive" />
               </div>
               <div>
-                <h3 className="text-xl mb-2">Error Loading Validator</h3>
+                <h3 className="text-xl font-handwritten mb-2">Error Loading Validator</h3>
                 <p className="text-destructive">
                   {data?.errorMessage || (error as Error).message}
                 </p>
@@ -310,290 +296,278 @@ const ValidatorDetail = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Ambient Gradient Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-transparent rounded-full blur-3xl" />
-      </div>
+      <Navigation />
 
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Navigation */}
-        <Navigation />
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/")}
+          className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm group"
+        >
+          <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-handwritten">Back to Dashboard</span>
+        </button>
 
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-          {/* Back Button */}
-          <button
-            onClick={() => navigate("/")}
-            className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm group"
-          >
-            <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Dashboard</span>
-          </button>
-
-          {/* Network Epoch Progress */}
-          {networkStatus?.webServerEpochProgress && (
-            <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500/20 to-pink-500/20 rounded-xl border border-orange-500/20">
-                    <TrendingUp className="size-4 sm:size-5 text-orange-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl mb-1">Current Network Epoch Progress</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Epoch {networkStatus.webServerEpochProgress.currentEpochSystem}
-                    </p>
-                  </div>
+        {/* Network Epoch Progress */}
+        {networkStatus?.webServerEpochProgress && (
+          <div className="mb-6 bg-card rounded-2xl p-4 sm:p-6 border-2 border-border shadow-paper">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-accent rounded-xl border-2 border-border">
+                  <TrendingUp className="size-4 sm:size-5 text-foreground" />
                 </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mb-6">
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full relative transition-all duration-500"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, percentageCompleted)).toFixed(2)}%`
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-400 animate-pulse opacity-50" />
-                  </div>
-                </div>
-                <p className="text-xs sm:text-sm mt-3 text-muted-foreground">
-                  {percentageCompleted.toFixed(2)}% completed • {currentBlockInEpoch.toLocaleString()} of {blocksInEpoch.toLocaleString()} blocks
-                </p>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Blocks in Epoch</p>
-                  <p className="text-lg sm:text-2xl bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
-                    {currentBlockInEpoch.toLocaleString()}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    of {blocksInEpoch.toLocaleString()}
-                  </p>
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Remaining Blocks</p>
-                  <p className="text-lg sm:text-2xl">
-                    {remainingBlocksInEpoch.toLocaleString()}
-                  </p>
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Next Epoch In</p>
-                  <p className="text-lg sm:text-2xl">
-                    {formatDuration(nextEpochETASec)}
-                  </p>
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Epoch Completion Time</p>
-                  <p className="text-sm sm:text-lg">
-                    {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
-                  </p>
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
-                  <AnimatedBlockNumber block={currentBlock} />
-                </div>
-                <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Live Time (WIB)</p>
-                  <p className="text-sm sm:text-lg font-mono">
-                    {formatCurrentTime()}
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-handwritten mb-1">Current Network Epoch Progress</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Epoch {networkStatus.webServerEpochProgress.currentEpochSystem}
                   </p>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Validator Detail Header */}
-          <div className="mb-6">
-            <h2 className="text-base sm:text-lg mb-3 text-muted-foreground">Validator Detail</h2>
-            <div className="bg-card/50 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-border/50 inline-block max-w-full">
-              <code className="text-[10px] sm:text-xs text-orange-400 font-mono break-all">
-                {data?.validatorAddress}
-              </code>
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="h-3 bg-muted/50 rounded-full overflow-hidden border border-border">
+                <div
+                  className="h-full bg-primary rounded-full relative transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, percentageCompleted)).toFixed(2)}%`
+                  }}
+                />
+              </div>
+              <p className="text-xs sm:text-sm mt-3 text-muted-foreground">
+                {percentageCompleted.toFixed(2)}% completed • {currentBlockInEpoch.toLocaleString()} of {blocksInEpoch.toLocaleString()} blocks
+              </p>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Blocks in Epoch</p>
+                <p className="text-xl sm:text-2xl font-handwritten text-primary">
+                  {currentBlockInEpoch.toLocaleString()}
+                </p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                  of {blocksInEpoch.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Remaining Blocks</p>
+                <p className="text-xl sm:text-2xl font-handwritten">
+                  {remainingBlocksInEpoch.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Next Epoch In</p>
+                <p className="text-xl sm:text-2xl font-handwritten">
+                  {formatDuration(nextEpochETASec)}
+                </p>
+              </div>
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Est. Epoch Completion Time</p>
+                <p className="text-sm sm:text-lg">
+                  {formatDateTime(networkStatus.webServerEpochProgress.estimatedEpochCompletionTime)}
+                </p>
+              </div>
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Current Network Block</p>
+                <AnimatedBlockNumber block={currentBlock} />
+              </div>
+              <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Live Time (WIB)</p>
+                <p className="text-sm sm:text-lg font-mono">
+                  {formatCurrentTime()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validator Detail Header */}
+        <div className="mb-6">
+          <h2 className="text-lg sm:text-xl font-handwritten mb-3 text-muted-foreground">Validator Detail</h2>
+          <div className="bg-card rounded-xl p-3 sm:p-4 border-2 border-border shadow-card inline-block max-w-full">
+            <code className="text-[10px] sm:text-xs text-primary font-mono break-all">
+              {data?.validatorAddress}
+            </code>
+          </div>
+        </div>
+
+        {/* Current Phrase Info */}
+        <div className="mb-6 bg-card rounded-2xl p-4 sm:p-6 border-2 border-border shadow-paper">
+          <div className="flex items-start gap-3 sm:gap-4 mb-6">
+            <div className="p-2 sm:p-3 bg-success/20 rounded-xl border-2 border-success/30">
+              <Activity className="size-4 sm:size-5 text-success" />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-handwritten mb-1">Current Phrase Information</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Phrase {data?.latestPhraseNumber}</p>
             </div>
           </div>
 
-          {/* Current Phrase Info */}
-          <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 hover:border-border transition-colors">
-            <div className="flex items-start gap-3 sm:gap-4 mb-6">
-              <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl border border-emerald-500/20">
-                <Activity className="size-4 sm:size-5 text-emerald-400" />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Start Epoch</p>
+              <p className="text-2xl sm:text-3xl font-handwritten">{data?.latestPhraseStartEpoch}</p>
+            </div>
+            <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">End Epoch</p>
+              <p className="text-2xl sm:text-3xl font-handwritten">{data?.latestPhraseEndEpoch}</p>
+            </div>
+            <div className="bg-background rounded-xl p-3 sm:p-4 border-2 border-border col-span-2">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Phrase Start Time</p>
+              <p className="text-sm sm:text-xl">
+                {formatDateTime(data?.actualPhraseStartTimeForDisplay || null)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Epoch History Grid */}
+        <div className="mb-6 bg-card rounded-2xl p-4 sm:p-6 border-2 border-border shadow-paper">
+          <div className="flex items-start gap-3 sm:gap-4 mb-6">
+            <div className="p-2 sm:p-3 bg-chart-3/20 rounded-xl border-2 border-chart-3/30">
+              <Grid3x3 className="size-4 sm:size-5 text-chart-3" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl sm:text-2xl font-handwritten mb-1">Epoch History Grid</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Color-coded epoch status for current phrase</p>
+            </div>
+          </div>
+
+          {/* Grid - Square blocks with full epoch numbers */}
+          <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-14 xl:grid-cols-21 gap-1.5 mb-6">
+            {data?.allEpochsInLatestPhrase?.map((epoch) => (
+              <div
+                key={epoch.epochNumber}
+                className={`group relative aspect-square rounded-lg flex items-center justify-center text-[9px] sm:text-[10px] cursor-pointer transition-all hover:scale-110 hover:shadow-lg hover:z-10 border-2 border-border/50 ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''}`}
+                title={`Epoch ${epoch.epochNumber}: ${epoch.status}`}
+              >
+                <span className="opacity-90 font-mono font-medium text-primary-foreground">
+                  {epoch.epochNumber}
+                </span>
+
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-48 sm:w-64 bg-card border-2 border-border rounded-xl p-3 sm:p-4 shadow-paper text-xs">
+                  <p className="font-handwritten text-base mb-2 text-foreground">Epoch {epoch.epochNumber}</p>
+                  <p className="text-muted-foreground mb-1">
+                    <strong className="text-foreground">Status:</strong> {epoch.status}
+                  </p>
+                  <p className="text-muted-foreground mb-1">
+                    <strong className="text-foreground">Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}
+                  </p>
+                  {epoch.lastApiHelperStateChangeTimestamp && (
+                    <p className="text-muted-foreground">
+                      <strong className="text-foreground">Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 sm:gap-4 bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-success rounded-md border border-border" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-handwritten">PASS</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-destructive rounded-md border border-border" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-handwritten">FAIL</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-primary rounded-md border border-border" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-handwritten">RUNNING</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-muted rounded-md border border-border" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-handwritten">NO DATA</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Phrase History */}
+        <div className="bg-card rounded-2xl p-4 sm:p-6 border-2 border-border shadow-paper">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="p-2 sm:p-3 bg-chart-4/20 rounded-xl border-2 border-chart-4/30">
+                <Clock className="size-4 sm:size-5 text-chart-4" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl mb-1">Current Phrase Information</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">Phrase {data?.latestPhraseNumber}</p>
+                <h3 className="text-xl sm:text-2xl font-handwritten mb-1">Phrase History</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Historical performance across all phrases</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Start Epoch</p>
-                <p className="text-xl sm:text-3xl">{data?.latestPhraseStartEpoch}</p>
-              </div>
-              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">End Epoch</p>
-                <p className="text-xl sm:text-3xl">{data?.latestPhraseEndEpoch}</p>
-              </div>
-              <div className="bg-card/50 rounded-xl p-3 sm:p-4 border border-border/50 col-span-2">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-2">Phrase Start Time</p>
-                <p className="text-sm sm:text-xl">
-                  {formatDateTime(data?.actualPhraseStartTimeForDisplay || null)}
-                </p>
-              </div>
-            </div>
+            <button
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-background hover:bg-accent rounded-xl border-2 border-border transition-all text-xs sm:text-sm font-handwritten"
+            >
+              {historyExpanded ? (
+                <>
+                  <span className="hidden sm:inline">Collapse</span>
+                  <ChevronUp className="size-4" />
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Expand</span>
+                  <ChevronDown className="size-4" />
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Epoch History Grid */}
-          <div className="mb-6 bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50">
-            <div className="flex items-start gap-3 sm:gap-4 mb-6">
-              <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl border border-blue-500/20">
-                <Grid3x3 className="size-4 sm:size-5 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl mb-1">Epoch History Grid</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">Color-coded epoch status for current phrase</p>
-              </div>
-            </div>
-
-            {/* Grid - Square blocks with full epoch numbers */}
-            <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-14 xl:grid-cols-21 gap-1 mb-6">
-              {data?.allEpochsInLatestPhrase?.map((epoch) => (
+          {historyExpanded && (
+            <div className="space-y-3">
+              {data?.phraseHistory?.map((phrase) => (
                 <div
-                  key={epoch.epochNumber}
-                  className={`group relative aspect-square rounded flex items-center justify-center text-[9px] sm:text-[10px] text-white cursor-pointer transition-all hover:scale-110 hover:shadow-lg hover:z-10 ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''}`}
-                  title={`Epoch ${epoch.epochNumber}: ${epoch.status}`}
+                  key={phrase.phraseNumber}
+                  className={`p-3 sm:p-4 rounded-xl border-2 transition-colors ${phrase.isCurrentPhrase
+                    ? "bg-primary/10 border-primary/30"
+                    : "bg-background border-border hover:border-foreground/30"
+                    }`}
                 >
-                  <span className="opacity-90 font-mono font-medium">
-                    {epoch.epochNumber}
-                  </span>
-
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-48 sm:w-64 bg-popover border border-border rounded-xl p-3 sm:p-4 shadow-xl text-xs">
-                    <p className="font-bold mb-2 text-foreground">Epoch {epoch.epochNumber}</p>
-                    <p className="text-muted-foreground mb-1">
-                      <strong className="text-foreground">Status:</strong> {epoch.status}
-                    </p>
-                    <p className="text-muted-foreground mb-1">
-                      <strong className="text-foreground">Inactive Time:</strong> {formatDuration(epoch.totalApiHelperInactiveSeconds)}
-                    </p>
-                    {epoch.lastApiHelperStateChangeTimestamp && (
-                      <p className="text-muted-foreground">
-                        <strong className="text-foreground">Last Change:</strong> {formatDateTime(epoch.lastApiHelperStateChangeTimestamp)}
-                      </p>
-                    )}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-base sm:text-xl font-handwritten">
+                        Phrase {phrase.phraseNumber}
+                      </span>
+                      {phrase.isCurrentPhrase && (
+                        <span className="px-2 py-0.5 bg-primary/20 text-primary text-[10px] sm:text-xs rounded-full border border-primary/30 font-handwritten">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                      <span className="text-muted-foreground">
+                        Epochs {phrase.startEpoch} - {phrase.endEpoch}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="size-3 sm:size-4 text-success" />
+                        <span className="text-success font-handwritten">{phrase.passCount}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="size-3 sm:size-4 text-destructive" />
+                        <span className="text-destructive font-handwritten">{phrase.failCount}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-3 sm:gap-4 bg-card/30 rounded-xl p-3 sm:p-4 border border-border/30">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground">PASS</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground">FAIL</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground">RUNNING</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted rounded" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground">NO DATA</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Phrase History */}
-          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/20">
-                  <Clock className="size-4 sm:size-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl mb-1">Phrase History</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Historical performance across all phrases</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setHistoryExpanded(!historyExpanded)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-card hover:bg-muted rounded-lg border border-border transition-all text-xs sm:text-sm"
-              >
-                {historyExpanded ? (
-                  <>
-                    <span className="hidden sm:inline">Collapse</span>
-                    <ChevronUp className="size-4" />
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">Expand</span>
-                    <ChevronDown className="size-4" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            {historyExpanded && (
-              <div className="space-y-3">
-                {data?.phraseHistory?.map((phrase) => (
-                  <div
-                    key={phrase.phraseNumber}
-                    className={`p-3 sm:p-4 rounded-xl border transition-colors ${phrase.isCurrentPhrase
-                      ? "bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-orange-500/30"
-                      : "bg-card/30 border-border/30 hover:border-border/50"
-                      }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <span className="text-sm sm:text-lg font-medium">
-                          Phrase {phrase.phraseNumber}
-                        </span>
-                        {phrase.isCurrentPhrase && (
-                          <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] sm:text-xs rounded-full border border-orange-500/30">
-                            Current
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
-                        <span className="text-muted-foreground">
-                          Epochs {phrase.startEpoch} - {phrase.endEpoch}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="size-3 sm:size-4 text-emerald-400" />
-                          <span className="text-emerald-400">{phrase.passCount}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="size-3 sm:size-4 text-destructive" />
-                          <span className="text-destructive">{phrase.failCount}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!historyExpanded && data?.phraseHistory && data.phraseHistory.length > 0 && (
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {data.phraseHistory.length} phrases available. Click expand to view history.
-              </p>
-            )}
-          </div>
-
-          {/* Footer */}
-          <footer className="mt-8 pt-6 border-t border-border/50 text-center text-xs sm:text-sm text-muted-foreground">
-            <p>&copy; 2025 crxanode. All rights reserved.</p>
-          </footer>
+          {!historyExpanded && data?.phraseHistory && data.phraseHistory.length > 0 && (
+            <p className="text-xs sm:text-sm text-muted-foreground font-handwritten">
+              {data.phraseHistory.length} phrases available. Click expand to view history.
+            </p>
+          )}
         </div>
+
+        {/* Footer */}
+        <footer className="mt-8 pt-6 border-t-2 border-border border-dashed text-center text-xs sm:text-sm text-muted-foreground">
+          <p className="font-handwritten">&copy; 2025 crxanode. All rights reserved.</p>
+        </footer>
       </div>
     </div>
   );

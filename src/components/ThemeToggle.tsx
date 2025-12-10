@@ -7,7 +7,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="p-2 rounded-lg bg-card hover:bg-muted border border-border transition-all"
+      className="p-2 rounded-xl bg-card hover:bg-accent border-2 border-border transition-all shadow-card"
       title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
       {theme === "dark" ? (
