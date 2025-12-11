@@ -1,15 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON } from '../storage/storage.js';
 import { getCurrentEpoch } from './polkadot-rpc.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/dashboard
  * Returns complete dashboard data with all validators
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     // Read global constants
     const constants = await readJSON<any>('data/config/global_constants.json') || {
@@ -22,7 +19,7 @@ export default async function handler(
     // Calculate current phrase based on live epoch
     const currentEpoch = await getCurrentEpoch();
     if (currentEpoch === -1) {
-      return res.status(500).json({ error: 'Failed to get current epoch' });
+      return errorResponse('Failed to get current epoch');
     }
 
     const firstEpoch = constants.FIRST_EVER_PHRASE_START_EPOCH;
@@ -38,9 +35,7 @@ export default async function handler(
     const phrasedata = await readJSON<Record<string, any>>(`data/phrasedata/api_helper_phrase_${currentPhrase}_data.json`);
 
     if (!metadata || !phrasedata) {
-      return res.status(404).json({
-        error: 'Dashboard data not found'
-      });
+      return errorResponse('Dashboard data not found', 404);
     }
 
     // Format validators list
@@ -107,7 +102,7 @@ export default async function handler(
 
     const currentlyActiveCount = validators.filter(v => v.lastApiHelperState === 'active').length;
 
-    return res.status(200).json({
+    return jsonResponse({
       currentPhrase,
       phraseStartEpoch: metadata.phraseStartEpoch,
       phraseEndEpoch: metadata.phraseEndEpoch,
@@ -122,8 +117,6 @@ export default async function handler(
     });
   } catch (error) {
     console.error('[dashboard] Error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, writeJSON } from '../storage/storage.js';
 import { getActiveValidators, getCurrentEpoch } from './polkadot-rpc.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -47,10 +47,7 @@ function updateApiHelperInactiveDuration(
  * Check API Helper status for all nodes
  * This is the main uptime monitoring logic
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     console.log(`[${new Date().toISOString()}] [run-uptime] Starting uptime check cycle...`);
 
@@ -65,7 +62,7 @@ export default async function handler(
     const currentNetworkEpoch = await getCurrentEpoch();
     if (currentNetworkEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Failed to get current epoch, skipping uptime check`);
-      return res.status(200).json({ 
+      return jsonResponse({ 
         success: true, 
         message: 'Failed to get current epoch' 
       });
@@ -76,7 +73,7 @@ export default async function handler(
 
     if (currentPhraseNumber === -1 || currentPhraseNumber < 1) {
       console.log(`[${new Date().toISOString()}] Epoch/frasa belum diketahui. Pengecekan ditunda.`);
-      return res.status(200).json({ 
+      return jsonResponse({ 
         success: true, 
         message: 'Phrase not yet determined' 
       });
@@ -140,7 +137,7 @@ export default async function handler(
 
     console.log(`[${new Date().toISOString()}] [run-uptime] Uptime check cycle completed successfully`);
 
-    return res.status(200).json({
+    return jsonResponse({
       success: true,
       currentEpoch: lastKnownNetworkEpoch,
       currentPhrase: currentPhraseNumber,
@@ -150,9 +147,6 @@ export default async function handler(
     });
   } catch (error) {
     console.error('[run-uptime] Error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

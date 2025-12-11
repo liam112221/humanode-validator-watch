@@ -1,15 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON } from '../storage/storage.js';
 import { getSessionProgress } from './polkadot-rpc.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/network-status
  * Returns current network epoch progress (read-only, no storage writes)
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     const constants = await readJSON<any>('data/config/global_constants.json') || {
       AVG_BLOCK_TIME_SECONDS: 6,
@@ -17,9 +14,7 @@ export default async function handler(
 
     const sessionInfo = await getSessionProgress();
     if (!sessionInfo) {
-      return res.status(500).json({
-        error: 'Failed to get session progress',
-      });
+      return errorResponse('Failed to get session progress');
     }
 
     const {
@@ -41,7 +36,7 @@ export default async function handler(
       Date.now() + nextEpochETASec * 1000
     ).toISOString();
 
-    return res.status(200).json({
+    return jsonResponse({
       webServerEpochProgress: {
         currentEpochSystem: currentIndex,
         blocksInEpoch,
@@ -59,9 +54,6 @@ export default async function handler(
     });
   } catch (error) {
     console.error('[network-status] Error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }
-
