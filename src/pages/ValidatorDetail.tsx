@@ -247,11 +247,11 @@ const ValidatorDetail = () => {
   const getEpochStatusColor = (status: string): string => {
     switch (status) {
       case "PASS_API_HELPER":
-        return "bg-success";
+        return "bg-green-500";
       case "FAIL_API_HELPER":
-        return "bg-destructive";
-      case "BERJALAN":
-        return "bg-primary";
+        return "bg-red-500";
+      case "BERJALAN": // Running
+        return "bg-blue-500";
       case "NO_DATA":
         return "bg-muted";
       default:
@@ -440,10 +440,10 @@ const ValidatorDetail = () => {
             {data?.allEpochsInLatestPhrase?.map((epoch) => (
               <div
                 key={epoch.epochNumber}
-                className={`group relative aspect-square rounded-lg flex items-center justify-center text-[9px] sm:text-[10px] cursor-pointer transition-all hover:scale-110 hover:shadow-lg hover:z-10 border-2 border-border/50 ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''}`}
+                className={`group relative aspect-square rounded-lg flex items-center justify-center text-xs sm:text-sm text-foreground cursor-pointer transition-all hover:scale-110 hover:shadow-lg hover:z-10 border-2 border-border/50 ${getEpochStatusColor(epoch.status)} ${epoch.status === 'BERJALAN' ? 'animate-pulse' : ''}`}
                 title={`Epoch ${epoch.epochNumber}: ${epoch.status}`}
               >
-                <span className="opacity-90 font-mono font-medium text-primary-foreground">
+                <span>
                   {epoch.epochNumber}
                 </span>
 

@@ -1,0 +1,29 @@
+[plugin:vite:react-swc] x Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+     ,-[C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/src/pages/ValidatorDetail.tsx:464:1]
+ 461 |                   )}
+ 462 |                 </div>
+ 463 |               </div>
+ 464 |             ))}
+     :               ^
+ 465 |           </div>
+ 466 | 
+ 466 |           {/* Legend */}
+     `----
+  x Expected '</', got 'jsx text (
+  |             ))}
+  |           )'
+     ,-[C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/src/pages/ValidatorDetail.tsx:463:1]
+ 460 |                         </p>
+ 461 |                       )}
+ 462 |                     </div>
+ 463 | ,->               </div>
+ 464 | |               ))}
+ 465 | `->           </div>
+ 466 |     
+ 467 |               {/* Legend */}
+ 467 |               <div className="flex flex-wrap gap-3 sm:gap-4 bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
+     `----
+
+
+Caused by:
+    Syntax Error
