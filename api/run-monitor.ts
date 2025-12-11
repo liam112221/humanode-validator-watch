@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, writeJSON } from '../storage/storage.js';
 import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -385,10 +385,7 @@ async function runUptimeCheck(
 /**
  * Main combined monitor handler - runs both epoch management and uptime check
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     console.log(`[${new Date().toISOString()}] ========================================`);
     console.log(`[${new Date().toISOString()}] [run-monitor] Starting monitoring cycle...`);
@@ -411,154 +408,132 @@ export default async function handler(
 
     if (currentNetworkEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Gagal mendapatkan epoch jaringan, siklus ditunda.`);
-      return res.status(200).json({ success: true, message: 'Failed to get network epoch' });
+      return jsonResponse({ success: true, message: 'Failed to get network epoch' });
     }
 
     const activeValidatorsSet = new Set<string>(activeValidatorsList);
     const effectiveCurrentEpoch = currentNetworkEpoch;
     const calculatedCurrentPhraseNumber = calculatePhraseNumber(effectiveCurrentEpoch);
 
-    console.log(`[${new Date().toISOString()}] [INFO] Current network epoch: ${effectiveCurrentEpoch}`);
-    console.log(`[${new Date().toISOString()}] [INFO] Calculated phrase: ${calculatedCurrentPhraseNumber}`);
-    console.log(`[${new Date().toISOString()}] [INFO] Last known epoch: ${lastKnownNetworkEpoch}`);
-
     if (calculatedCurrentPhraseNumber < 1) {
       console.log(`[${new Date().toISOString()}] Epoch jaringan (${effectiveCurrentEpoch}) lebih awal dari frasa pertama. Menunggu.`);
       lastKnownNetworkEpoch = effectiveCurrentEpoch;
-      return res.status(200).json({ success: true, message: 'Epoch before first phrase' });
+      return jsonResponse({ success: true, message: 'Epoch before first phrase' });
     }
 
-    // Handle phrase transition
-    if (currentPhraseNumber !== calculatedCurrentPhraseNumber && currentPhraseNumber !== -1) {
-      console.log(`[${new Date().toISOString()}] ========================================`);
-      console.log(`[${new Date().toISOString()}] [PHRASE-TRANSITION] Detected phrase change: ${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}`);
-      console.log(`[${new Date().toISOString()}] ========================================`);
+    // Load or initialize phrase data
+    let phraseMonitoringData: any = {};
+    let currentPhraseMetadata: any = {};
+    let phraseTransitioned = false;
 
+    if (currentPhraseNumber !== calculatedCurrentPhraseNumber) {
+      console.log(`[${new Date().toISOString()}] --- Frasa Baru Terdeteksi (${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}) ---`);
+      
+      // CRITICAL: Finalize all BERJALAN epochs in previous phrase before transitioning
       if (currentPhraseNumber >= 1) {
         await finalizePreviousPhrase(currentPhraseNumber);
       }
-
-      currentPhraseNumber = calculatedCurrentPhraseNumber;
+      
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
+      if (!currentPhraseMetadata.epochs) {
+        currentPhraseMetadata.epochs = {};
+      }
+      phraseTransitioned = true;
     } else if (currentPhraseNumber === -1) {
-      console.log(`[${new Date().toISOString()}] [INIT] Inisialisasi pada Frasa ${calculatedCurrentPhraseNumber}.`);
-      currentPhraseNumber = calculatedCurrentPhraseNumber;
+      console.log(`[${new Date().toISOString()}] Inisialisasi pada Frasa ${calculatedCurrentPhraseNumber}.`);
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
+      if (!currentPhraseMetadata.epochs) {
+        currentPhraseMetadata.epochs = {};
+      }
     }
 
-    // ALWAYS load data for current phrase
-    console.log(`[${new Date().toISOString()}] [LOAD] Loading data for phrase ${calculatedCurrentPhraseNumber}...`);
-    let phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
-    let currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
-
-    console.log(`[${new Date().toISOString()}] [LOAD] Loaded ${Object.keys(phraseMonitoringData).length} validators from storage`);
-
-    if (!currentPhraseMetadata.epochs) {
-      currentPhraseMetadata.epochs = {};
-    }
-
-    const currentPhraseStartEpoch = getStartEpochForPhrase(calculatedCurrentPhraseNumber);
+    currentPhraseNumber = calculatedCurrentPhraseNumber;
+    const currentPhraseStartEpoch = getStartEpochForPhrase(currentPhraseNumber);
     const currentPhraseEndEpoch = currentPhraseStartEpoch + PHRASE_DURATION_EPOCHS - 1;
 
-    // Initialize phrase metadata if needed
-    if (Object.keys(currentPhraseMetadata).length === 0 || currentPhraseMetadata.phraseNumber !== calculatedCurrentPhraseNumber) {
+    if (Object.keys(currentPhraseMetadata).length === 0 || currentPhraseMetadata.phraseNumber !== currentPhraseNumber) {
       const existingPhraseStartTime = currentPhraseMetadata.phraseStartTime;
       currentPhraseMetadata = {
-        phraseNumber: calculatedCurrentPhraseNumber,
+        phraseNumber: currentPhraseNumber,
         phraseStartEpoch: currentPhraseStartEpoch,
         phraseEndEpoch: currentPhraseEndEpoch,
         phraseStartTime: existingPhraseStartTime || null,
         epochs: {}
       };
-      await writeJSON(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+      await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
     }
 
-    // Ensure current epoch metadata exists
-    if (lastKnownNetworkEpoch !== -1 && (
-      !currentPhraseMetadata.epochs[lastKnownNetworkEpoch] ||
-      !currentPhraseMetadata.epochs[lastKnownNetworkEpoch].startTime
-    )) {
-      console.log(`[${new Date().toISOString()}] [METADATA] Fetching metadata for epoch ${lastKnownNetworkEpoch}...`);
-      const { firstBlock, sessionLength, epochStartTime } = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
-
-      if (epochStartTime) {
-        if (!currentPhraseMetadata.epochs) currentPhraseMetadata.epochs = {};
-        currentPhraseMetadata.epochs[lastKnownNetworkEpoch] = {
-          startTime: epochStartTime,
-          firstBlock: firstBlock,
-          sessionLength: sessionLength
-        };
-        await writeJSON(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`, currentPhraseMetadata);
-        console.log(`[${new Date().toISOString()}] [METADATA] Successfully saved metadata for epoch ${lastKnownNetworkEpoch}.`);
-      }
+    // Load phrase data if not loaded yet (for same phrase continuation)
+    if (Object.keys(phraseMonitoringData).length === 0) {
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${currentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`) || { epochs: {} };
     }
 
-    // ===== EPOCH MANAGEMENT LOGIC =====
+    // Finalize any stuck running epochs before processing new epoch
+    await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
 
-    // Finalize stuck epochs
-    if (calculatedCurrentPhraseNumber >= 1) {
-      await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, calculatedCurrentPhraseNumber);
-    }
-
-    // Handle finished epochs
-    if (lastKnownNetworkEpoch !== -1 && effectiveCurrentEpoch > lastKnownNetworkEpoch) {
-      console.log(`[${new Date().toISOString()}] ========================================`);
-      console.log(`[${new Date().toISOString()}] [EPOCH-END] Detected epoch transition: ${lastKnownNetworkEpoch} -> ${effectiveCurrentEpoch}`);
-      console.log(`[${new Date().toISOString()}] ========================================`);
-
-      for (let epochJustFinished = lastKnownNetworkEpoch; epochJustFinished < effectiveCurrentEpoch; epochJustFinished++) {
-        const phraseOfFinishedEpoch = calculatePhraseNumber(epochJustFinished);
-        if (phraseOfFinishedEpoch > 0) {
-          console.log(`[${new Date().toISOString()}] [EPOCH-END] Processing finished epoch ${epochJustFinished}...`);
-          await handleApiHelperEpochEnd(phraseMonitoringData, epochJustFinished, phraseOfFinishedEpoch);
+    // Handle epoch transitions
+    let epochTransitioned = false;
+    if (lastKnownNetworkEpoch !== -1 && lastKnownNetworkEpoch !== effectiveCurrentEpoch) {
+      // Process all epochs between last known and current
+      for (let epochToFinish = lastKnownNetworkEpoch; epochToFinish < effectiveCurrentEpoch; epochToFinish++) {
+        const phraseForEpoch = calculatePhraseNumber(epochToFinish);
+        if (phraseForEpoch === currentPhraseNumber) {
+          await handleApiHelperEpochEnd(phraseMonitoringData, epochToFinish, phraseForEpoch);
         }
       }
-
-      console.log(`[${new Date().toISOString()}] [EPOCH-END] All finished epochs processed and saved.`);
-    }
-
-    // Handle new epoch start
-    let epochTransitioned = false;
-    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) &&
-      (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
-
-      console.log(`[${new Date().toISOString()}] ========================================`);
-      console.log(`[${new Date().toISOString()}] [NEW-EPOCH] Initializing new epoch ${effectiveCurrentEpoch}...`);
-      console.log(`[${new Date().toISOString()}] ========================================`);
-
-      await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, calculatedCurrentPhraseNumber, activeValidatorsSet);
+      
+      // Handle new epoch start
+      await handleApiHelperNewEpochStart(
+        phraseMonitoringData,
+        currentPhraseMetadata,
+        effectiveCurrentEpoch,
+        currentPhraseNumber,
+        activeValidatorsSet
+      );
+      epochTransitioned = true;
+    } else if (lastKnownNetworkEpoch === -1) {
+      // First run - initialize current epoch
+      await handleApiHelperNewEpochStart(
+        phraseMonitoringData,
+        currentPhraseMetadata,
+        effectiveCurrentEpoch,
+        currentPhraseNumber,
+        activeValidatorsSet
+      );
       epochTransitioned = true;
     }
 
-    // ===== UPTIME CHECK LOGIC =====
+    // Run uptime check
     const uptimeDataChanged = await runUptimeCheck(
       phraseMonitoringData,
       activeValidatorsSet,
       effectiveCurrentEpoch,
-      calculatedCurrentPhraseNumber
+      currentPhraseNumber
     );
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;
 
     console.log(`[${new Date().toISOString()}] ========================================`);
     console.log(`[${new Date().toISOString()}] [run-monitor] Monitoring cycle completed successfully`);
-    console.log(`[${new Date().toISOString()}] [run-monitor] Epoch: ${effectiveCurrentEpoch} | Phrase: ${calculatedCurrentPhraseNumber}`);
-    console.log(`[${new Date().toISOString()}] [run-monitor] Epoch transitioned: ${epochTransitioned} | Uptime changed: ${uptimeDataChanged}`);
     console.log(`[${new Date().toISOString()}] ========================================`);
 
-    return res.status(200).json({
+    return jsonResponse({
       success: true,
       currentEpoch: effectiveCurrentEpoch,
-      currentPhrase: calculatedCurrentPhraseNumber,
+      currentPhrase: currentPhraseNumber,
+      phraseStartEpoch: currentPhraseStartEpoch,
+      phraseEndEpoch: currentPhraseEndEpoch,
       activeValidatorsCount: activeValidatorsSet.size,
+      phraseTransitioned,
       epochTransitioned,
       uptimeDataChanged,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] [run-monitor] ERROR:`, error);
-    return res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    });
+    console.error('[run-monitor] Error:', error);
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

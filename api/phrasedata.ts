@@ -1,39 +1,31 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON } from '../storage/storage.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/phrasedata
  * Returns phrase data (API Helper uptime data) for a specific phrase
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
-    const { phrase } = req.query;
+    const url = new URL(request.url);
+    const phrase = url.searchParams.get('phrase');
 
     if (!phrase) {
-      return res.status(400).json({
-        error: 'Missing phrase parameter'
-      });
+      return errorResponse('Missing phrase parameter', 400);
     }
 
-    const phraseNumber = parseInt(phrase as string, 10);
+    const phraseNumber = parseInt(phrase, 10);
     const phrasedataPath = `data/phrasedata/api_helper_phrase_${phraseNumber}_data.json`;
 
     const phrasedata = await readJSON(phrasedataPath);
 
     if (!phrasedata) {
-      return res.status(404).json({
-        error: `Phrase data not found for phrase ${phraseNumber}`
-      });
+      return errorResponse(`Phrase data not found for phrase ${phraseNumber}`, 404);
     }
 
-    return res.status(200).json(phrasedata);
+    return jsonResponse(phrasedata);
   } catch (error) {
     console.error('[phrasedata] Error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

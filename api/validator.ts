@@ -1,22 +1,18 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, listBlobs } from '../storage/storage.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/validator/:address
  * Returns complete validator data across all phrases
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
+    const url = new URL(request.url);
     // Support both query param and path param
-    const address = req.query.address as string || req.url?.split('/api/validator/')[1]?.split('?')[0];
+    const address = url.searchParams.get('address') || url.pathname.split('/api/validator/')[1]?.split('?')[0];
 
     if (!address) {
-      return res.status(400).json({
-        error: 'Missing address parameter'
-      });
+      return errorResponse('Missing address parameter', 400);
     }
 
     const constants = await readJSON<any>('data/config/global_constants.json') || {
@@ -76,9 +72,7 @@ export default async function handler(
     }
 
     if (Object.keys(validatorDataForAllPhrases).length === 0 && !errorMessage) {
-      return res.status(404).json({
-        error: `Validator ${address} not found in any tracked phrase`
-      });
+      return errorResponse(`Validator ${address} not found in any tracked phrase`, 404);
     }
 
     const latestGlobalPhraseMetadata = allPhrasesMetadata.length > 0 ? allPhrasesMetadata[0] : null;
@@ -135,7 +129,7 @@ export default async function handler(
       };
     }).filter(item => item.hasDataForThisPhrase || item.isCurrentPhrase);
 
-    return res.status(200).json({
+    return jsonResponse({
       validatorAddress: address,
       errorMessage,
       latestPhraseNumber,
@@ -151,8 +145,6 @@ export default async function handler(
     });
   } catch (error) {
     console.error('[validator] Error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

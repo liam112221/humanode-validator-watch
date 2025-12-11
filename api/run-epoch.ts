@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, writeJSON } from '../storage/storage.js';
 import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
 let FIRST_EVER_PHRASE_START_EPOCH = 5450;
@@ -330,10 +330,7 @@ async function handleApiHelperNewEpochStart(
 /**
  * Main epoch management handler
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     console.log(`[${new Date().toISOString()}] [run-epoch] Starting epoch monitoring cycle...`);
 
@@ -350,7 +347,7 @@ export default async function handler(
     const currentNetworkEpoch = await getCurrentEpoch();
     if (currentNetworkEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Gagal mendapatkan epoch jaringan, siklus ditunda.`);
-      return res.status(200).json({ success: true, message: 'Failed to get network epoch' });
+      return jsonResponse({ success: true, message: 'Failed to get network epoch' });
     }
 
     const effectiveCurrentEpoch = currentNetworkEpoch;
@@ -359,7 +356,7 @@ export default async function handler(
     if (calculatedCurrentPhraseNumber < 1) {
       console.log(`[${new Date().toISOString()}] Epoch jaringan (${effectiveCurrentEpoch}) lebih awal dari frasa pertama. Menunggu.`);
       lastKnownNetworkEpoch = effectiveCurrentEpoch;
-      return res.status(200).json({ success: true, message: 'Epoch before first phrase' });
+      return jsonResponse({ success: true, message: 'Epoch before first phrase' });
     }
 
     // Load or initialize phrase data
@@ -409,59 +406,77 @@ export default async function handler(
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch] ||
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch].startTime
     )) {
-      console.log(`[${new Date().toISOString()}] [INFO] Metadata global untuk epoch ${lastKnownNetworkEpoch} (frasa ${currentPhraseNumber}) tidak ada/tidak lengkap. Mencoba mengambil.`);
-      const { firstBlock, sessionLength, epochStartTime } = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
-
-      if (epochStartTime) {
-        if (!currentPhraseMetadata.epochs) currentPhraseMetadata.epochs = {};
+      const epochDetails = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
+      if (epochDetails.epochStartTime) {
+        if (!currentPhraseMetadata.epochs) {
+          currentPhraseMetadata.epochs = {};
+        }
         currentPhraseMetadata.epochs[lastKnownNetworkEpoch] = {
-          startTime: epochStartTime,
-          firstBlock: firstBlock,
-          sessionLength: sessionLength
+          startTime: epochDetails.epochStartTime,
+          firstBlock: epochDetails.firstBlock,
+          sessionLength: epochDetails.sessionLength
         };
         await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
-        console.log(`[${new Date().toISOString()}] [INFO] Berhasil menambahkan/memperbarui detail global untuk epoch ${lastKnownNetworkEpoch} ke metadata frasa ${currentPhraseNumber}.`);
       }
     }
 
-    // Finalize stuck epochs
-    if (currentPhraseNumber >= 1) {
-      await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
+    // Load phrase data if not loaded yet (for same phrase continuation)
+    if (Object.keys(phraseMonitoringData).length === 0) {
+      phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${currentPhraseNumber}_data.json`) || {};
+      currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`) || { epochs: {} };
     }
 
-    // Handle finished epochs
-    if (lastKnownNetworkEpoch !== -1 && effectiveCurrentEpoch > lastKnownNetworkEpoch) {
-      for (let epochJustFinished = lastKnownNetworkEpoch; epochJustFinished < effectiveCurrentEpoch; epochJustFinished++) {
-        const phraseOfFinishedEpoch = calculatePhraseNumber(epochJustFinished);
-        if (phraseOfFinishedEpoch > 0) {
-          await handleApiHelperEpochEnd(phraseMonitoringData, epochJustFinished, phraseOfFinishedEpoch);
+    // Finalize any stuck running epochs before processing new epoch
+    await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
+
+    // Get active validators
+    const activeValidatorsList = await getActiveValidators();
+    const activeValidatorsSet = new Set<string>(activeValidatorsList);
+
+    // Handle epoch transitions
+    if (lastKnownNetworkEpoch !== -1 && lastKnownNetworkEpoch !== effectiveCurrentEpoch) {
+      // Process all epochs between last known and current
+      for (let epochToFinish = lastKnownNetworkEpoch; epochToFinish < effectiveCurrentEpoch; epochToFinish++) {
+        const phraseForEpoch = calculatePhraseNumber(epochToFinish);
+        if (phraseForEpoch === currentPhraseNumber) {
+          await handleApiHelperEpochEnd(phraseMonitoringData, epochToFinish, phraseForEpoch);
         }
       }
-    }
-
-    // Handle new epoch start
-    if ((lastKnownNetworkEpoch === -1 || effectiveCurrentEpoch > lastKnownNetworkEpoch) &&
-      (effectiveCurrentEpoch >= currentPhraseStartEpoch && effectiveCurrentEpoch <= currentPhraseEndEpoch)) {
-      const activeValidators = await getActiveValidators();
-      const activeValidatorsSet = new Set<string>(activeValidators);
-      await handleApiHelperNewEpochStart(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber, activeValidatorsSet);
+      
+      // Handle new epoch start
+      await handleApiHelperNewEpochStart(
+        phraseMonitoringData,
+        currentPhraseMetadata,
+        effectiveCurrentEpoch,
+        currentPhraseNumber,
+        activeValidatorsSet
+      );
+    } else if (lastKnownNetworkEpoch === -1) {
+      // First run - initialize current epoch
+      await handleApiHelperNewEpochStart(
+        phraseMonitoringData,
+        currentPhraseMetadata,
+        effectiveCurrentEpoch,
+        currentPhraseNumber,
+        activeValidatorsSet
+      );
     }
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;
 
     console.log(`[${new Date().toISOString()}] [run-epoch] Epoch monitoring cycle completed successfully`);
 
-    return res.status(200).json({
+    return jsonResponse({
       success: true,
       currentEpoch: effectiveCurrentEpoch,
       currentPhrase: currentPhraseNumber,
+      phraseStartEpoch: currentPhraseStartEpoch,
+      phraseEndEpoch: currentPhraseEndEpoch,
+      activeValidatorsCount: activeValidatorsSet.size,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('[run-epoch] Error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }

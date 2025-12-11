@@ -1,14 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { readJSON, listBlobs } from '../storage/storage.js';
+import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/recap
  * Returns cycle recap with statistics per week
  */
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(request: Request): Promise<Response> {
   try {
     const constants = await readJSON<any>('data/config/global_constants.json') || {
       FIRST_EVER_PHRASE_START_EPOCH: 5450,
@@ -112,15 +109,13 @@ export default async function handler(
 
     recap.completedCycles.sort((a, b) => b.phraseNumber - a.phraseNumber);
 
-    return res.status(200).json({
+    return jsonResponse({
       ...recap,
       constants,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('[recap] Error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }
