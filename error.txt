@@ -1,12 +1,49 @@
-2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] ========================================
-2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] [run-monitor] Starting monitoring cycle...
-2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] ========================================
-2025-12-12 07:28:07.091 [info] [2025-12-12T07:28:07.090Z] [BACKFILL] Memeriksa epoch-epoch yang stuck di status BERJALAN...
-2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [BACKFILL] Tidak ada epoch yang perlu difinalisasi.
-2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [UPTIME] Checking validator uptime for epoch 6734...
-2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [UPTIME] Ditemukan 231 validator aktif di RPC.
-2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] [UPTIME] [SAVE] Data uptime check untuk epoch 6734 telah disimpan.
-2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] ========================================
-2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] [run-monitor] Monitoring cycle completed successfully
-2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] ========================================
-2025-12-12 07:33:02.707 [error] Vercel Runtime Timeout Error: Task timed out after 300 seconds
+[{
+	"resource": "/C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/api/validator.ts",
+	"owner": "typescript",
+	"code": "2304",
+	"severity": 8,
+	"message": "Cannot find name 'listBlobs'.",
+	"source": "ts",
+	"startLineNumber": 35,
+	"startColumn": 35,
+	"endLineNumber": 35,
+	"endColumn": 44,
+	"origin": "extHost1"
+},{
+	"resource": "/C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/api/validator.ts",
+	"owner": "typescript",
+	"code": "7006",
+	"severity": 8,
+	"message": "Parameter 'blob' implicitly has an 'any' type.",
+	"source": "ts",
+	"startLineNumber": 36,
+	"startColumn": 50,
+	"endLineNumber": 36,
+	"endColumn": 54,
+	"origin": "extHost1"
+},{
+	"resource": "/C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/api/validator.ts",
+	"owner": "typescript",
+	"code": "2304",
+	"severity": 8,
+	"message": "Cannot find name 'listBlobs'.",
+	"source": "ts",
+	"startLineNumber": 54,
+	"startColumn": 37,
+	"endLineNumber": 54,
+	"endColumn": 46,
+	"origin": "extHost1"
+},{
+	"resource": "/C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/api/validator.ts",
+	"owner": "typescript",
+	"code": "7006",
+	"severity": 8,
+	"message": "Parameter 'blob' implicitly has an 'any' type.",
+	"source": "ts",
+	"startLineNumber": 55,
+	"startColumn": 54,
+	"endLineNumber": 55,
+	"endColumn": 58,
+	"origin": "extHost1"
+}]

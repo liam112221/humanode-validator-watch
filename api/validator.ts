@@ -1,4 +1,5 @@
 import { readJSON, listBlobs } from '../storage/storage.js';
+import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails, disconnect } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
@@ -146,5 +147,7 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[validator] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    await disconnect();
   }
 }
