@@ -1,53 +1,53 @@
 {
   "functions": {
-    "server-vercel.ts": {
+    "api/_vercel.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/dashboard",
-      "destination": "/server-vercel/dashboard"
+      "destination": "/api/_vercel/dashboard"
     },
     {
       "source": "/api/data-latest",
-      "destination": "/server-vercel/dataLatest"
+      "destination": "/api/_vercel/dataLatest"
     },
     {
       "source": "/api/metadata",
-      "destination": "/server-vercel/metadata"
+      "destination": "/api/_vercel/metadata"
     },
     {
       "source": "/api/network-status",
-      "destination": "/server-vercel/networkStatus"
+      "destination": "/api/_vercel/networkStatus"
     },
     {
       "source": "/api/phrasedata",
-      "destination": "/server-vercel/phrasedata"
+      "destination": "/api/_vercel/phrasedata"
     },
     {
       "source": "/api/recap",
-      "destination": "/server-vercel/recap"
+      "destination": "/api/_vercel/recap"
     },
     {
       "source": "/api/run-epoch",
-      "destination": "/server-vercel/runEpoch"
+      "destination": "/api/_vercel/runEpoch"
     },
     {
       "source": "/api/run-monitor",
-      "destination": "/server-vercel/runMonitor"
+      "destination": "/api/_vercel/runMonitor"
     },
     {
       "source": "/api/run-uptime",
-      "destination": "/server-vercel/runUptime"
+      "destination": "/api/_vercel/runUptime"
     },
     {
       "source": "/api/validator/:address",
-      "destination": "/server-vercel/validator?address=:address"
+      "destination": "/api/_vercel/validator?address=:address"
     },
     {
       "source": "/api/validator",
-      "destination": "/server-vercel/validator"
+      "destination": "/api/_vercel/validator"
     },
     {
       "source": "/((?!api/).*)",
