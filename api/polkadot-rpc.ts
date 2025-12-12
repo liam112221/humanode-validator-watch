@@ -7,24 +7,30 @@ import { ApiPromise, HttpProvider } from '@polkadot/api';
 
 const RPC_ENDPOINT = 'https://explorer-rpc-http.mainnet.stages.humanode.io';
 
-let apiPromise: Promise<ApiPromise> | null = null;
+let apiInstance: ApiPromise | null = null;
 
 async function getApi(): Promise<ApiPromise> {
-  if (!apiPromise) {
+  if (!apiInstance) {
     const provider = new HttpProvider(RPC_ENDPOINT);
-    apiPromise = ApiPromise.create({ provider });
+    // noInitWarn suppresses standard Polkadot connection warnings
+    apiInstance = await ApiPromise.create({ provider, noInitWarn: true });
   }
-  return apiPromise;
+  return apiInstance;
 }
 
 /**
  * Disconnect the API
  */
 export async function disconnect(): Promise<void> {
-  if (apiPromise) {
-    const api = await apiPromise;
-    await api.disconnect();
-    apiPromise = null;
+  if (apiInstance) {
+    try {
+      console.log('[System] Disconnecting RPC...');
+      await apiInstance.disconnect();
+      console.log('[System] RPC Disconnected.');
+    } catch (err) {
+      console.error('[System] Error disconnecting RPC:', err);
+    }
+    apiInstance = null;
   }
 }
 
