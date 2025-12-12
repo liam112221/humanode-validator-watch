@@ -96,6 +96,14 @@ app.get(/(.*)/, (req, res) => {
     res.sendFile(indexPath);
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+// ✅ FIX: Only listen in local dev, NOT in Vercel serverless!
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.NETLIFY) {
+    app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+} else {
+    console.log('Running in serverless mode - app.listen() skipped');
+}
+
+// ✅ Export app for serverless platforms (Vercel, Netlify, etc.)
+export default app;

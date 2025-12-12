@@ -99,32 +99,47 @@ async function withApi<T>(fn: (api: ApiPromise) => Promise<T>): Promise<T> {
     if (api) {
       try {
         console.log('[RPC] Disconnecting API...');
-        await Promise.race([
-          api.disconnect(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('API disconnect timeout')), 5000)
-          )
-        ]);
+
+        // ✅ FIX: Force disconnect with AbortController pattern
+        const disconnectPromise = (async () => {
+          await api!.disconnect();
+        })();
+
+        const timeoutPromise = new Promise<void>((resolve) => {
+          setTimeout(() => {
+            console.log('[RPC] Disconnect timeout - forcing cleanup...');
+            resolve(); // ✅ Resolve instead of reject to continue cleanup
+          }, 5000);
+        });
+
+        await Promise.race([disconnectPromise, timeoutPromise]);
+
+        // ✅ CRITICAL: Force close provider if disconnect didn't complete
+        const provider = (api as any)._provider || (api as any).provider;
+        if (provider) {
+          if (typeof provider.disconnect === 'function') {
+            try {
+              console.log('[RPC] Force disconnecting provider...');
+              provider.disconnect();
+            } catch (e) {
+              console.error('[RPC] Error force disconnecting provider:', e);
+            }
+          }
+
+          // ✅ NUCLEAR OPTION: Destroy WebSocket connection directly
+          const ws = (provider as any)._websocket || (provider as any).websocket;
+          if (ws && typeof ws.terminate === 'function') {
+            console.log('[RPC] Terminating WebSocket connection...');
+            ws.terminate();
+          } else if (ws && typeof ws.close === 'function') {
+            console.log('[RPC] Closing WebSocket connection...');
+            ws.close();
+          }
+        }
+
         console.log('[RPC] API disconnected successfully.');
       } catch (disconnectErr) {
-        console.error('[RPC] Error during API disconnect:', disconnectErr);
-
-        // Fallback: Try to disconnect provider directly
-        try {
-          const provider = (api as any).provider;
-          if (provider && typeof provider.disconnect === 'function') {
-            console.log('[RPC] Attempting direct provider disconnect...');
-            await Promise.race([
-              provider.disconnect(),
-              new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Provider disconnect timeout')), 5000)
-              )
-            ]);
-            console.log('[RPC] Provider disconnected successfully.');
-          }
-        } catch (providerErr) {
-          console.error('[RPC] Error during provider disconnect:', providerErr);
-        }
+        console.error('[RPC] Error during disconnect:', disconnectErr);
       }
     }
   }

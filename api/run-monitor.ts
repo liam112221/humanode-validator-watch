@@ -333,20 +333,35 @@ async function runUptimeCheck(
   phraseMonitoringData: any,
   activeValidators: Set<string>,
   currentEpoch: number,
-  currentPhrase: number
+  currentPhrase: number,
+  isNewEpoch: boolean = false  // ✅ NEW: Skip uptime check on new epoch
 ): Promise<boolean> {
   console.log(`[${new Date().toISOString()}] [UPTIME] Checking validator uptime for epoch ${currentEpoch}...`);
   console.log(`[${new Date().toISOString()}] [UPTIME] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
 
+  // ✅ OPTIMIZATION: Skip uptime check if this is a brand new epoch (just initialized)
+  if (isNewEpoch) {
+    console.log(`[${new Date().toISOString()}] [UPTIME] Skipping uptime check - epoch just initialized.`);
+    return false;
+  }
+
   const currentTime = Date.now();
-  const allKnownValidators = new Set<string>([
-    ...Object.keys(phraseMonitoringData),
-    ...Array.from(activeValidators)
-  ]);
+
+  // ✅ OPTIMIZATION: Only check validators with BERJALAN status
+  // Don't iterate through ALL validators in phraseMonitoringData!
+  const validatorsToCheck = new Set<string>();
+  for (const validatorAddress in phraseMonitoringData) {
+    const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[currentEpoch];
+    if (epochData && epochData.status === 'BERJALAN') {
+      validatorsToCheck.add(validatorAddress);
+    }
+  }
+
+  console.log(`[${new Date().toISOString()}] [UPTIME] Checking ${validatorsToCheck.size} validators with BERJALAN status.`);
 
   let dataChanged = false;
 
-  for (const validatorAddress of allKnownValidators) {
+  for (const validatorAddress of validatorsToCheck) {
     const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[currentEpoch];
 
     if (!epochData || epochData.status !== 'BERJALAN') {
@@ -375,6 +390,7 @@ async function runUptimeCheck(
   }
 
   if (dataChanged) {
+    console.log(`[${new Date().toISOString()}] [UPTIME] Saving updates for ${validatorsToCheck.size} validators...`);
     await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhrase}_data.json`, phraseMonitoringData);
     console.log(`[${new Date().toISOString()}] [UPTIME] [SAVE] Data uptime check untuk epoch ${currentEpoch} telah disimpan.`);
   }
@@ -510,7 +526,8 @@ export default async function handler(request: Request): Promise<Response> {
       phraseMonitoringData,
       activeValidatorsSet,
       effectiveCurrentEpoch,
-      currentPhraseNumber
+      currentPhraseNumber,
+      epochTransitioned  // ✅ NEW: Pass epochTransitioned to skip uptime check on new epoch
     );
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;

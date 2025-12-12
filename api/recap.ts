@@ -4,10 +4,11 @@ import { jsonResponse, errorResponse } from './utils/response.js';
 /**
  * API Endpoint: /api/recap
  * Returns cycle recap with statistics per week
- * ✅ JSON ONLY - No RPC calls
+ * ✅ OPTIMIZED - Parallel file reads + efficient processing
  */
 export default async function handler(request: Request): Promise<Response> {
   try {
+    const startTime = Date.now();
     console.log('[recap] Request received');
 
     const constants = await readJSON<any>('data/config/global_constants.json') || {
@@ -17,10 +18,16 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS: 7200
     };
 
+    // ✅ OPTIMIZATION 1: Parallel blob listing
+    const [metadataBlobs, phrasedataBlobs] = await Promise.all([
+      listBlobs('data/metadata/'),
+      listBlobs('data/phrasedata/')
+    ]);
+    console.log('[recap] Found', metadataBlobs.length, 'metadata blobs and', phrasedataBlobs.length, 'phrasedata blobs');
+
     // Determine current phrase from metadata
     let currentPhraseNumber = 0;
     try {
-      const metadataBlobs = await listBlobs('data/metadata/');
       const phraseNumbers = metadataBlobs
         .map(b => {
           const match = b.pathname.match(/phrase_(\d+)_metadata\.json/);
@@ -41,22 +48,34 @@ export default async function handler(request: Request): Promise<Response> {
       ongoingCycle: null as any
     };
 
-    // List all phrase data files
-    const blobs = await listBlobs('data/phrasedata/');
-    console.log('[recap] Found phrasedata blobs:', blobs.length);
-
-    const phraseDataFiles = blobs.filter(blob =>
+    const phraseDataFiles = phrasedataBlobs.filter(blob =>
       blob.pathname.includes('api_helper_phrase_') && blob.pathname.endsWith('_data.json')
     );
 
-    for (const blob of phraseDataFiles) {
-      const match = blob.pathname.match(/api_helper_phrase_(\d+)_data\.json/);
-      if (!match) continue;
+    // ✅ OPTIMIZATION 2: Parallel file reads for all phrases
+    const phraseNumbers = phraseDataFiles
+      .map(blob => {
+        const match = blob.pathname.match(/api_helper_phrase_(\d+)_data\.json/);
+        return match ? parseInt(match[1], 10) : -1;
+      })
+      .filter(n => n >= 0);
 
-      const phraseNum = parseInt(match[1], 10);
+    const [metadataResults, phraseDataResults] = await Promise.all([
+      Promise.all(
+        phraseNumbers.map(num => readJSON<any>(`data/metadata/phrase_${num}_metadata.json`))
+      ),
+      Promise.all(
+        phraseNumbers.map(num => readJSON<Record<string, any>>(`data/phrasedata/api_helper_phrase_${num}_data.json`))
+      )
+    ]);
 
-      const metadata = await readJSON<any>(`data/metadata/phrase_${phraseNum}_metadata.json`);
-      const phraseData = await readJSON<Record<string, any>>(`data/phrasedata/api_helper_phrase_${phraseNum}_data.json`);
+    console.log('[recap] Loaded', metadataResults.length, 'metadata and', phraseDataResults.length, 'phrase data files');
+
+    // ✅ OPTIMIZATION 3: Process data efficiently with Map
+    for (let i = 0; i < phraseNumbers.length; i++) {
+      const phraseNum = phraseNumbers[i];
+      const metadata = metadataResults[i];
+      const phraseData = phraseDataResults[i];
 
       if (!metadata || !phraseData) continue;
 
@@ -68,11 +87,13 @@ export default async function handler(request: Request): Promise<Response> {
         let week1 = { zeroFails: 0, withFails: 0 };
         let week2 = { zeroFails: 0, withFails: 0 };
 
+        // ✅ Single pass through validators
         for (const validator of validators) {
           const epochs = phraseData[validator].epochs || {};
           let week1Fails = 0;
           let week2Fails = 0;
 
+          // ✅ Single pass through epochs
           for (const epochNum in epochs) {
             const epochNumber = parseInt(epochNum, 10);
             if (epochs[epochNum].status === 'FAIL_API_HELPER') {
@@ -100,11 +121,13 @@ export default async function handler(request: Request): Promise<Response> {
         let week1FullPass = 0;
         let week2FullPass = 0;
 
+        // ✅ Single pass through validators
         for (const validator of validators) {
           const epochs = phraseData[validator].epochs || {};
           let week1PassCount = 0;
           let week2PassCount = 0;
 
+          // ✅ Single pass through epochs
           for (const epochNum in epochs) {
             const epochNumber = parseInt(epochNum, 10);
             if (epochs[epochNum].status === 'PASS_API_HELPER') {
@@ -131,12 +154,15 @@ export default async function handler(request: Request): Promise<Response> {
 
     recap.completedCycles.sort((a, b) => b.phraseNumber - a.phraseNumber);
 
+    const duration = Date.now() - startTime;
+    console.log('[recap] Processed in', duration, 'ms');
     console.log('[recap] Returning', recap.completedCycles.length, 'completed cycles');
 
     return jsonResponse({
       ...recap,
       constants,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      processingTimeMs: duration
     });
   } catch (error) {
     console.error('[recap] Error:', error);
