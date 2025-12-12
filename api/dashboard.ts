@@ -1,5 +1,5 @@
 import { readJSON } from '../storage/storage.js';
-import { getCurrentEpoch } from './polkadot-rpc.js';
+import { getCurrentEpoch, disconnect } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
@@ -118,5 +118,7 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[dashboard] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    await disconnect();
   }
 }

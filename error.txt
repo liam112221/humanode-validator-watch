@@ -1,29 +1,12 @@
-[plugin:vite:react-swc] x Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
-     ,-[C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/src/pages/ValidatorDetail.tsx:464:1]
- 461 |                   )}
- 462 |                 </div>
- 463 |               </div>
- 464 |             ))}
-     :               ^
- 465 |           </div>
- 466 | 
- 466 |           {/* Legend */}
-     `----
-  x Expected '</', got 'jsx text (
-  |             ))}
-  |           )'
-     ,-[C:/Users/MyBook Hype AMD/Downloads/coding/humanode/humanode-validator-watch/src/pages/ValidatorDetail.tsx:463:1]
- 460 |                         </p>
- 461 |                       )}
- 462 |                     </div>
- 463 | ,->               </div>
- 464 | |               ))}
- 465 | `->           </div>
- 466 |     
- 467 |               {/* Legend */}
- 467 |               <div className="flex flex-wrap gap-3 sm:gap-4 bg-background rounded-xl p-3 sm:p-4 border-2 border-border">
-     `----
-
-
-Caused by:
-    Syntax Error
+2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] ========================================
+2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] [run-monitor] Starting monitoring cycle...
+2025-12-12 07:28:02.710 [info] [2025-12-12T07:28:02.710Z] ========================================
+2025-12-12 07:28:07.091 [info] [2025-12-12T07:28:07.090Z] [BACKFILL] Memeriksa epoch-epoch yang stuck di status BERJALAN...
+2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [BACKFILL] Tidak ada epoch yang perlu difinalisasi.
+2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [UPTIME] Checking validator uptime for epoch 6734...
+2025-12-12 07:28:07.093 [info] [2025-12-12T07:28:07.093Z] [UPTIME] Ditemukan 231 validator aktif di RPC.
+2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] [UPTIME] [SAVE] Data uptime check untuk epoch 6734 telah disimpan.
+2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] ========================================
+2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] [run-monitor] Monitoring cycle completed successfully
+2025-12-12 07:28:08.145 [info] [2025-12-12T07:28:08.145Z] ========================================
+2025-12-12 07:33:02.707 [error] Vercel Runtime Timeout Error: Task timed out after 300 seconds

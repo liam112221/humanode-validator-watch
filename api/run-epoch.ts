@@ -1,5 +1,5 @@
 import { readJSON, writeJSON } from '../storage/storage.js';
-import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails } from './polkadot-rpc.js';
+import { getCurrentEpoch, getSessionProgress, getActiveValidators, getFirstBlockOfEpochDetails, disconnect } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
@@ -478,5 +478,7 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[run-epoch] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    await disconnect();
   }
 }

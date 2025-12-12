@@ -18,6 +18,17 @@ async function getApi(): Promise<ApiPromise> {
 }
 
 /**
+ * Disconnect the API
+ */
+export async function disconnect(): Promise<void> {
+  if (apiPromise) {
+    const api = await apiPromise;
+    await api.disconnect();
+    apiPromise = null;
+  }
+}
+
+/**
  * Get current epoch/session index
  */
 export async function getCurrentEpoch(): Promise<number> {

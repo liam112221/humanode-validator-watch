@@ -1,5 +1,5 @@
 import { readJSON, writeJSON } from '../storage/storage.js';
-import { getActiveValidators, getCurrentEpoch } from './polkadot-rpc.js';
+import { getActiveValidators, getCurrentEpoch, disconnect } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
@@ -148,5 +148,7 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[run-uptime] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    await disconnect();
   }
 }
