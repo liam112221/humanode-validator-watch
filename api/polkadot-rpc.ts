@@ -1,49 +1,311 @@
-import { ApiPromise, HttpProvider } from '@polkadot/api';
+import { ApiPromise, WsProvider } from '@polkadot/api';
 
-const RPC_ENDPOINT = 'https://explorer-rpc-http.mainnet.stages.humanode.io';
+// ✅ WebSocket endpoint (more reliable than HTTP!)
+const RPC_ENDPOINTS = [
+  'wss://explorer-rpc-ws.mainnet.stages.humanode.io',
+  'https://explorer-rpc-http.mainnet.stages.humanode.io', // Fallback to HTTP
+];
+const CONNECTION_TIMEOUT_MS = 30000; // 30 seconds
+const MAX_RETRIES = 3;
 
-let apiInstance: ApiPromise | null = null;
-
-async function getApi(): Promise<ApiPromise> {
-  if (!apiInstance) {
-    const provider = new HttpProvider(RPC_ENDPOINT);
-    
-    // Create API instance with warnings suppressed
-    const connectionPromise = ApiPromise.create({ provider, noInitWarn: true });
-    
-    // Force timeout after 10 seconds to prevent hanging
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Polkadot RPC Connection Timeout (10s)')), 10000)
-    );
-
-    try {
-      console.log('[System] Connecting to Polkadot RPC...');
-      // Race: whichever finishes first wins
-      apiInstance = await Promise.race([connectionPromise, timeoutPromise]);
-      console.log('[System] Connected to RPC.');
-    } catch (error) {
-      console.error('[System] RPC Connection Failed:', error);
-      throw error;
-    }
-  }
-  return apiInstance;
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
+ * Create a NEW API instance with WebSocket (more reliable!)
+ * ✅ Tries WebSocket first, falls back to HTTP if needed
+ * ✅ Retry logic with exponential backoff
+ */
+async function createApi(): Promise<ApiPromise> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // Try each endpoint in order
+    for (const endpoint of RPC_ENDPOINTS) {
+      const isWebSocket = endpoint.startsWith('wss://') || endpoint.startsWith('ws://');
+
+      let provider: WsProvider | any = null;
+
+      try {
+        console.log(`[RPC] Connecting to ${endpoint} (attempt ${attempt}/${MAX_RETRIES})...`);
+
+        if (isWebSocket) {
+          // ✅ WebSocket Provider (more reliable for persistent connections)
+          provider = new WsProvider(endpoint, false); // false = don't auto-connect
+          await provider.connect();
+        } else {
+          // ✅ HTTP Provider (fallback)
+          const { HttpProvider } = await import('@polkadot/api');
+          provider = new HttpProvider(endpoint);
+        }
+
+        const connectionPromise = ApiPromise.create({
+          provider,
+          noInitWarn: true
+        });
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`RPC Timeout: ${endpoint}`)), CONNECTION_TIMEOUT_MS)
+        );
+
+        const api = await Promise.race([connectionPromise, timeoutPromise]);
+        console.log(`[RPC] Connected successfully to ${endpoint}`);
+        return api;
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.error(`[RPC] Connection failed to ${endpoint}:`, lastError.message);
+
+        // Cleanup provider on error
+        if (provider) {
+          try {
+            await provider.disconnect();
+          } catch (cleanupError) {
+            console.error('[RPC] Error during cleanup:', cleanupError);
+          }
+        }
+      }
+    }
+
+    // ✅ Wait before retry (exponential backoff)
+    if (attempt < MAX_RETRIES) {
+      const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      console.log(`[RPC] Retrying in ${delayMs}ms...`);
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError || new Error('Failed to connect to RPC after all retries');
+}
+
+/**
+ * Execute function with API and GUARANTEED cleanup
+ * ✅ This is the magic - auto disconnect even on errors!
+ */
+async function withApi<T>(fn: (api: ApiPromise) => Promise<T>): Promise<T> {
+  let api: ApiPromise | null = null;
+
+  try {
+    api = await createApi();
+
+    // Execute the function
+    return await fn(api);
+  } finally {
+    // ✅ GUARANTEED cleanup - runs even on errors/timeouts!
+    if (api) {
+      try {
+        console.log('[RPC] Disconnecting API...');
+        await Promise.race([
+          api.disconnect(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('API disconnect timeout')), 5000)
+          )
+        ]);
+        console.log('[RPC] API disconnected successfully.');
+      } catch (disconnectErr) {
+        console.error('[RPC] Error during API disconnect:', disconnectErr);
+
+        // Fallback: Try to disconnect provider directly
+        try {
+          const provider = (api as any).provider;
+          if (provider && typeof provider.disconnect === 'function') {
+            console.log('[RPC] Attempting direct provider disconnect...');
+            await Promise.race([
+              provider.disconnect(),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Provider disconnect timeout')), 5000)
+              )
+            ]);
+            console.log('[RPC] Provider disconnected successfully.');
+          }
+        } catch (providerErr) {
+          console.error('[RPC] Error during provider disconnect:', providerErr);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * ✅ NO LONGER NEEDED - withApi handles all cleanup automatically!
+ * Kept for backwards compatibility, but does nothing
+ */
+export async function disconnect(): Promise<void> {
+  console.log('[RPC] disconnect() called but not needed - withApi handles cleanup');
+}
+
+/**
+ * ✅ BATCH FUNCTION - Get all network data in ONE connection!
+ * This is much more efficient than calling individual functions
+ */
+export async function getAllNetworkData(): Promise<{
+  currentEpoch: number;
+  activeValidators: string[];
+  sessionProgress: {
+    currentIndex: number;
+    sessionLength: number;
+    sessionProgress: number;
+    currentBlock: number;
+  } | null;
+}> {
+  try {
+    return await withApi(async (api) => {
+      console.log('[RPC] Fetching ALL network data in single connection...');
+
+      // ✅ Get everything in parallel using Promise.all (even faster!)
+      const [
+        sessionIndex,
+        validators,
+        header,
+        sessionLength,
+      ] = await Promise.all([
+        api.query.session.currentIndex(),
+        api.query.session.validators(),
+        api.rpc.chain.getHeader(),
+        Promise.resolve(Number(api.consts.babe.epochDuration.toString())),
+      ]);
+
+      const currentEpoch = Number(sessionIndex.toString());
+      const activeValidators = (validators as any).map((v: any) => v.toString());
+      const currentBlock = Number(header.number.toString());
+      const sessionProgress = currentBlock % sessionLength;
+
+      console.log('[RPC] Network data fetched successfully:', {
+        epoch: currentEpoch,
+        validators: activeValidators.length,
+        block: currentBlock,
+        sessionLength,
+        sessionProgress,
+      });
+
+      return {
+        currentEpoch,
+        activeValidators,
+        sessionProgress: {
+          currentIndex: currentEpoch,
+          sessionLength,
+          sessionProgress,
+          currentBlock,
+        },
+      };
+    });
+  } catch (error) {
+    console.error('[getAllNetworkData] Error:', error);
+    return {
+      currentEpoch: -1,
+      activeValidators: [],
+      sessionProgress: null,
+    };
+  }
+}
+
+/**
+ * ✅ BATCH FUNCTION - Get epoch details with first block info
+ * Used when starting a new epoch
+ */
+export async function getEpochWithBlockDetails(targetEpoch: number): Promise<{
+  currentEpoch: number;
+  activeValidators: string[];
+  firstBlock: number | null;
+  sessionLength: number | null;
+  epochStartTime: string | null;
+}> {
+  try {
+    return await withApi(async (api) => {
+      console.log(`[RPC] Fetching epoch ${targetEpoch} details in single connection...`);
+
+      // Get basic data first
+      const [
+        sessionIndex,
+        validators,
+        header,
+        sessionLength,
+      ] = await Promise.all([
+        api.query.session.currentIndex(),
+        api.query.session.validators(),
+        api.rpc.chain.getHeader(),
+        Promise.resolve(Number(api.consts.babe.epochDuration.toString())),
+      ]);
+
+      const currentEpoch = Number(sessionIndex.toString());
+      const activeValidators = (validators as any).map((v: any) => v.toString());
+      const currentBlock = Number(header.number.toString());
+
+      // Calculate first block of target epoch
+      const floorDiv = Math.floor(currentBlock / sessionLength);
+      const epochOffset = currentEpoch - floorDiv;
+
+      let firstBlock: number | null = null;
+      let epochStartTime: string | null = null;
+
+      if (targetEpoch <= currentEpoch) {
+        const estimatedFirst = (targetEpoch - epochOffset) * sessionLength;
+        firstBlock = Math.max(1, estimatedFirst);
+
+        // Get timestamp from first block
+        try {
+          const blockHash = await api.rpc.chain.getBlockHash(firstBlock);
+          const block = await api.rpc.chain.getBlock(blockHash);
+
+          const timestampExtrinsic = block.block.extrinsics.find((ex) => {
+            const { method } = ex;
+            return method.section === 'timestamp' && method.method === 'set';
+          });
+
+          if (timestampExtrinsic) {
+            const timestampArg = timestampExtrinsic.method.args[0] as any;
+            const timestampMs = typeof timestampArg.toNumber === 'function'
+              ? timestampArg.toNumber()
+              : Number(timestampArg.toString());
+            epochStartTime = new Date(timestampMs).toISOString();
+          }
+        } catch (blockError) {
+          console.error(`[RPC] Error fetching block details for ${firstBlock}:`, blockError);
+        }
+      }
+
+      console.log('[RPC] Epoch details fetched successfully:', {
+        currentEpoch,
+        targetEpoch,
+        firstBlock,
+        epochStartTime,
+      });
+
+      return {
+        currentEpoch,
+        activeValidators,
+        firstBlock,
+        sessionLength,
+        epochStartTime,
+      };
+    });
+  } catch (error) {
+    console.error('[getEpochWithBlockDetails] Error:', error);
+    return {
+      currentEpoch: -1,
+      activeValidators: [],
+      firstBlock: null,
+      sessionLength: null,
+      epochStartTime: null,
+    };
+  }
+}
+
+/**
+ * ⚠️ DEPRECATED - Use getAllNetworkData() instead for better performance
  * Get current epoch/session index
  */
 export async function getCurrentEpoch(): Promise<number> {
-  try {
-    const api = await getApi();
-    const index = await api.query.session.currentIndex();
-    return Number(index.toString());
-  } catch (error) {
-    console.error('Error getting current epoch:', error);
-    return -1;
-  }
+  const data = await getAllNetworkData();
+  return data.currentEpoch;
 }
 
 /**
+ * ⚠️ DEPRECATED - Use getAllNetworkData() instead for better performance
  * Get current session progress
  */
 export async function getSessionProgress(): Promise<{
@@ -52,130 +314,32 @@ export async function getSessionProgress(): Promise<{
   sessionProgress: number;
   currentBlock: number;
 } | null> {
-  try {
-    const api = await getApi();
-
-    // Get current epoch
-    const currentIndex = await getCurrentEpoch();
-    if (currentIndex === -1) return null;
-
-    // Get session length (blocks per epoch) from BABE constants
-    const sessionLength = Number(api.consts.babe.epochDuration.toString());
-
-    // Get current block header
-    const header = await api.rpc.chain.getHeader();
-    const currentBlock = Number(header.number.toString());
-
-    // Calculate session progress
-    const sessionProgress = currentBlock % sessionLength;
-
-    return {
-      currentIndex,
-      sessionLength,
-      sessionProgress,
-      currentBlock,
-    };
-  } catch (error) {
-    console.error('Error getting session progress:', error);
-    return null;
-  }
+  const data = await getAllNetworkData();
+  return data.sessionProgress;
 }
 
 /**
+ * ⚠️ DEPRECATED - Use getAllNetworkData() instead for better performance
  * Get active validators list
  */
 export async function getActiveValidators(): Promise<string[]> {
-  try {
-    const api = await getApi();
-    const validators = await api.query.session.validators();
-    return (validators as any).map((v: any) => v.toString());
-  } catch (error) {
-    console.error('Error getting validators:', error);
-    return [];
-  }
+  const data = await getAllNetworkData();
+  return data.activeValidators;
 }
 
 /** 
+ * ⚠️ DEPRECATED - Use getEpochWithBlockDetails() instead for better performance
  * Get block timestamp from first block of epoch
- * This is a critical function for epoch start time
  */
 export async function getFirstBlockOfEpochDetails(targetEpoch: number): Promise<{
   firstBlock: number | null;
   sessionLength: number | null;
   epochStartTime: string | null;
 }> {
-  try {
-    const api = await getApi();
-
-    // Get current epoch and block info
-    const currentEpochOnChain = await getCurrentEpoch();
-    if (currentEpochOnChain === -1) {
-      return { firstBlock: null, sessionLength: null, epochStartTime: null };
-    }
-
-    const header = await api.rpc.chain.getHeader();
-    const currentBlockNumber = Number(header.number.toString());
-
-    const sessionLength = Number(api.consts.babe.epochDuration.toString());
-
-    // Derive offset between epoch index and block number division
-    const floorDiv = Math.floor(currentBlockNumber / sessionLength);
-    const epochOffset = currentEpochOnChain - floorDiv;
-
-    let firstBlock: number | null = null;
-
-    // Calculate first block of target epoch
-    if (targetEpoch <= currentEpochOnChain) {
-      const estimatedFirst = (targetEpoch - epochOffset) * sessionLength;
-      firstBlock = Math.max(1, estimatedFirst);
-    } else {
-      // Future epoch, can't calculate yet
-      console.log(`Target epoch ${targetEpoch} is in the future`);
-    }
-
-    let epochStartTime: string | null = null;
-    if (firstBlock) {
-      try {
-        const blockHash = await api.rpc.chain.getBlockHash(firstBlock);
-        const block = await api.rpc.chain.getBlock(blockHash);
-
-        // Find timestamp extrinsic
-        const timestampExtrinsic = block.block.extrinsics.find((ex) => {
-          const { method } = ex;
-          return method.section === 'timestamp' && method.method === 'set';
-        });
-
-        if (timestampExtrinsic) {
-          const timestampArg = timestampExtrinsic.method.args[0] as any;
-          const timestampMs = typeof timestampArg.toNumber === 'function'
-            ? timestampArg.toNumber()
-            : Number(timestampArg.toString());
-          epochStartTime = new Date(timestampMs).toISOString();
-        }
-      } catch (blockError) {
-        console.error(`Error fetching block details for ${firstBlock}:`, blockError);
-      }
-    }
-
-    return { firstBlock, sessionLength, epochStartTime };
-  } catch (error) {
-    console.error('Error in getFirstBlockOfEpochDetails:', error);
-    return { firstBlock: null, sessionLength: null, epochStartTime: null };
-  }
-}
-
-/**
- * Disconnect the API
- */
-export async function disconnect(): Promise<void> {
-  if (apiInstance) {
-    try {
-      console.log('[System] Disconnecting RPC...');
-      await apiInstance.disconnect();
-      console.log('[System] RPC Disconnected.');
-    } catch (err) {
-      console.error('[System] Error disconnecting RPC:', err);
-    }
-    apiInstance = null;
-  }
+  const data = await getEpochWithBlockDetails(targetEpoch);
+  return {
+    firstBlock: data.firstBlock,
+    sessionLength: data.sessionLength,
+    epochStartTime: data.epochStartTime,
+  };
 }

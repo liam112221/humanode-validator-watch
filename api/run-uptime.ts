@@ -29,8 +29,8 @@ function updateApiHelperInactiveDuration(
 ) {
   const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[epoch];
 
-  if (!epochData || !epochData.lastApiHelperStateChangeTimestamp || 
-      ['PASS_API_HELPER', 'FAIL_API_HELPER', 'NO_DATA'].includes(epochData.status)) {
+  if (!epochData || !epochData.lastApiHelperStateChangeTimestamp ||
+    ['PASS_API_HELPER', 'FAIL_API_HELPER', 'NO_DATA'].includes(epochData.status)) {
     return;
   }
 
@@ -62,9 +62,9 @@ export default async function handler(request: Request): Promise<Response> {
     const currentNetworkEpoch = await getCurrentEpoch();
     if (currentNetworkEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Failed to get current epoch, skipping uptime check`);
-      return jsonResponse({ 
-        success: true, 
-        message: 'Failed to get current epoch' 
+      return jsonResponse({
+        success: true,
+        message: 'Failed to get current epoch'
       });
     }
 
@@ -73,9 +73,9 @@ export default async function handler(request: Request): Promise<Response> {
 
     if (currentPhraseNumber === -1 || currentPhraseNumber < 1) {
       console.log(`[${new Date().toISOString()}] Epoch/frasa belum diketahui. Pengecekan ditunda.`);
-      return jsonResponse({ 
-        success: true, 
-        message: 'Phrase not yet determined' 
+      return jsonResponse({
+        success: true,
+        message: 'Phrase not yet determined'
       });
     }
 
@@ -85,7 +85,7 @@ export default async function handler(request: Request): Promise<Response> {
     // Get active validators from RPC
     const activeValidatorsList = await getActiveValidators();
     const activeValidators = new Set<string>(activeValidatorsList);
-    
+
     console.log(`[${new Date().toISOString()}] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
 
     const currentTime = Date.now();
@@ -98,7 +98,7 @@ export default async function handler(request: Request): Promise<Response> {
 
     for (const validatorAddress of allKnownValidators) {
       const epochData = phraseMonitoringData[validatorAddress]?.epochs?.[lastKnownNetworkEpoch];
-      
+
       // Skip if no data or epoch is finalized
       if (!epochData || epochData.status !== 'BERJALAN') {
         continue;

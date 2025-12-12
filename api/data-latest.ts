@@ -1,4 +1,5 @@
-import { readJSON, listBlobs } from '../storage/storage.js';
+import { readJSON } from '../storage/storage.js';
+import { getCurrentEpoch, disconnect } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
@@ -15,26 +16,30 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS: 7200
     };
 
-    // DETERMINE CURRENT PHRASE FROM STORAGE (NO RPC NEEDED)
-    let currentPhrase = 0;
+    // 1. FETCH DATA FROM RPC
+    let currentEpoch = -1;
     try {
-      const blobs = await listBlobs('data/metadata/');
-      // Extract phrase numbers from filenames like "phrase_5_metadata.json"
-      const phraseNumbers = blobs
-        .map(b => {
-          const match = b.pathname.match(/phrase_(\d+)_metadata\.json/);
-          return match ? parseInt(match[1], 10) : -1;
-        })
-        .filter(n => n >= 0);
-      
-      if (phraseNumbers.length > 0) {
-        currentPhrase = Math.max(...phraseNumbers);
-      }
-    } catch (e) {
-      console.error('Error listing metadata files:', e);
-      // Fallback to 0 if listing fails
+      currentEpoch = await getCurrentEpoch();
+    } catch (err) {
+      console.error('[data-latest] RPC Error:', err);
+    } finally {
+      // 2. DISCONNECT IMMEDIATELY
+      await disconnect();
     }
-    
+
+    if (currentEpoch === -1) {
+      return errorResponse('Failed to get current epoch');
+    }
+
+    const firstEpoch = constants.FIRST_EVER_PHRASE_START_EPOCH;
+    const phraseDuration = constants.PHRASE_DURATION_EPOCHS;
+    let currentPhrase = 0;
+    if (typeof firstEpoch === 'number' && typeof phraseDuration === 'number') {
+      if (currentEpoch >= firstEpoch) {
+        currentPhrase = Math.floor((currentEpoch - firstEpoch) / phraseDuration) + 1;
+      }
+    }
+
     const metadata = await readJSON(`data/metadata/phrase_${currentPhrase}_metadata.json`);
     const phrasedata = await readJSON(`data/phrasedata/api_helper_phrase_${currentPhrase}_data.json`);
 

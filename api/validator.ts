@@ -2,16 +2,22 @@ import { readJSON, listBlobs } from '../storage/storage.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
- * API Endpoint: /api/validator/:address
+ * API Endpoint: /api/validator/:address or /api/validator?address=xxx
  * Returns complete validator data across all phrases
+ * ✅ JSON ONLY - No RPC calls
  */
 export default async function handler(request: Request): Promise<Response> {
   try {
+    console.log('[validator] Request received');
+
     const url = new URL(request.url);
     // Support both query param and path param
     const address = url.searchParams.get('address') || url.pathname.split('/api/validator/')[1]?.split('?')[0];
 
+    console.log('[validator] Address requested:', address);
+
     if (!address) {
+      console.error('[validator] Missing address parameter');
       return errorResponse('Missing address parameter', 400);
     }
 
@@ -22,9 +28,6 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS: 7200
     };
 
-    // TODO: Calculate current phrase
-    const currentPhraseNumber = 0;
-
     let validatorDataForAllPhrases: Record<string, any> = {};
     let allPhrasesMetadata: any[] = [];
     let errorMessage = null;
@@ -32,6 +35,8 @@ export default async function handler(request: Request): Promise<Response> {
     try {
       // List all metadata files
       const metadataBlobs = await listBlobs('data/metadata/');
+      console.log('[validator] Found metadata blobs:', metadataBlobs.length);
+
       const metadataFiles = metadataBlobs.filter(blob =>
         blob.pathname.includes('phrase_') && blob.pathname.endsWith('_metadata.json')
       );
@@ -48,9 +53,12 @@ export default async function handler(request: Request): Promise<Response> {
       }
 
       allPhrasesMetadata.sort((a, b) => b.phraseNumber - a.phraseNumber);
+      console.log('[validator] Loaded metadata for', allPhrasesMetadata.length, 'phrases');
 
       // List all phrase data files
       const phrasedataBlobs = await listBlobs('data/phrasedata/');
+      console.log('[validator] Found phrasedata blobs:', phrasedataBlobs.length);
+
       const phrasedataFiles = phrasedataBlobs.filter(blob =>
         blob.pathname.includes('api_helper_phrase_') && blob.pathname.endsWith('_data.json')
       );
@@ -66,18 +74,23 @@ export default async function handler(request: Request): Promise<Response> {
           validatorDataForAllPhrases[`phrase_${phraseNum}`] = phraseData[address];
         }
       }
+
+      console.log('[validator] Found data in', Object.keys(validatorDataForAllPhrases).length, 'phrases');
     } catch (dirError: any) {
       errorMessage = `Error reading data: ${dirError.message}`;
       console.error('[validator] Error:', dirError);
     }
 
     if (Object.keys(validatorDataForAllPhrases).length === 0 && !errorMessage) {
+      console.error('[validator] Validator not found:', address);
       return errorResponse(`Validator ${address} not found in any tracked phrase`, 404);
     }
 
     const latestGlobalPhraseMetadata = allPhrasesMetadata.length > 0 ? allPhrasesMetadata[0] : null;
     const latestPhraseNumber = latestGlobalPhraseMetadata?.phraseNumber || 0;
     const phraseDataForValidatorLatest = validatorDataForAllPhrases[`phrase_${latestPhraseNumber}`] || null;
+
+    console.log('[validator] Latest phrase:', latestPhraseNumber);
 
     // Build all epochs in latest phrase
     let allEpochsInLatestPhrase = [];
@@ -129,6 +142,8 @@ export default async function handler(request: Request): Promise<Response> {
       };
     }).filter(item => item.hasDataForThisPhrase || item.isCurrentPhrase);
 
+    console.log('[validator] Returning data for validator');
+
     return jsonResponse({
       validatorAddress: address,
       errorMessage,
@@ -148,3 +163,6 @@ export default async function handler(request: Request): Promise<Response> {
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }
+
+// ✅ CRITICAL: Vercel compatibility export
+export { handler as GET, handler as POST };

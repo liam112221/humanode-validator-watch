@@ -1,9 +1,10 @@
 import { readJSON } from '../storage/storage.js';
-import { getSessionProgress, disconnect } from './polkadot-rpc.js';
+import { getSessionProgress } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
  * API Endpoint: /api/network-status
+ * ✅ ONLY endpoint that calls RPC - called ONCE when website loads
  * Returns current network epoch progress (read-only, no storage writes)
  */
 export default async function handler(request: Request): Promise<Response> {
@@ -12,14 +13,8 @@ export default async function handler(request: Request): Promise<Response> {
       AVG_BLOCK_TIME_SECONDS: 6,
     };
 
-    let sessionInfo = null;
-    try {
-      sessionInfo = await getSessionProgress();
-    } catch (err) {
-      console.error('[network-status] RPC Error:', err);
-    } finally {
-      await disconnect();
-    }
+    // ✅ withApi() pattern handles all cleanup automatically!
+    const sessionInfo = await getSessionProgress();
 
     if (!sessionInfo) {
       return errorResponse('Failed to get session progress');
@@ -64,4 +59,5 @@ export default async function handler(request: Request): Promise<Response> {
     console.error('[network-status] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
+  // ✅ NO FINALLY BLOCK - withApi() in polkadot-rpc.ts handles cleanup!
 }

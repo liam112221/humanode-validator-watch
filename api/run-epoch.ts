@@ -343,8 +343,31 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS = constants.EPOCH_FAIL_THRESHOLD_SECONDS || EPOCH_FAIL_THRESHOLD_SECONDS;
     }
 
-    // Get current network epoch
-    const currentNetworkEpoch = await getCurrentEpoch();
+    // 1. FETCH ALL RPC DATA UPFRONT
+    let currentNetworkEpoch = -1;
+    let activeValidatorsList: string[] = [];
+    let currentEpochDetails: any = { firstBlock: null, sessionLength: null, epochStartTime: null };
+
+    try {
+      // Get Epoch first to know what details to fetch
+      currentNetworkEpoch = await getCurrentEpoch();
+      
+      if (currentNetworkEpoch !== -1) {
+        // Fetch details for this epoch immediately
+        const [validators, details] = await Promise.all([
+          getActiveValidators(),
+          getFirstBlockOfEpochDetails(currentNetworkEpoch)
+        ]);
+        activeValidatorsList = validators;
+        currentEpochDetails = details;
+      }
+    } catch (rpcError) {
+      console.error('[run-epoch] RPC Error:', rpcError);
+    } finally {
+      // 2. DISCONNECT IMMEDIATELY (Stop and Go)
+      await disconnect();
+    }
+
     if (currentNetworkEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Gagal mendapatkan epoch jaringan, siklus ditunda.`);
       return jsonResponse({ success: true, message: 'Failed to get network epoch' });
@@ -401,20 +424,20 @@ export default async function handler(request: Request): Promise<Response> {
       await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
     }
 
-    // Ensure current epoch metadata exists
+    // Ensure current epoch metadata exists using PRE-FETCHED data
     if (lastKnownNetworkEpoch !== -1 && (
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch] ||
       !currentPhraseMetadata.epochs[lastKnownNetworkEpoch].startTime
     )) {
-      const epochDetails = await getFirstBlockOfEpochDetails(lastKnownNetworkEpoch);
-      if (epochDetails.epochStartTime) {
+      // Use the details we fetched upfront instead of calling RPC again
+      if (currentEpochDetails.epochStartTime) {
         if (!currentPhraseMetadata.epochs) {
           currentPhraseMetadata.epochs = {};
         }
         currentPhraseMetadata.epochs[lastKnownNetworkEpoch] = {
-          startTime: epochDetails.epochStartTime,
-          firstBlock: epochDetails.firstBlock,
-          sessionLength: epochDetails.sessionLength
+          startTime: currentEpochDetails.epochStartTime,
+          firstBlock: currentEpochDetails.firstBlock,
+          sessionLength: currentEpochDetails.sessionLength
         };
         await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
       }
@@ -429,8 +452,7 @@ export default async function handler(request: Request): Promise<Response> {
     // Finalize any stuck running epochs before processing new epoch
     await finalizeStuckRunningEpochs(phraseMonitoringData, currentPhraseMetadata, effectiveCurrentEpoch, currentPhraseNumber);
 
-    // Get active validators
-    const activeValidatorsList = await getActiveValidators();
+    // Use pre-fetched validators list
     const activeValidatorsSet = new Set<string>(activeValidatorsList);
 
     // Handle epoch transitions
@@ -444,22 +466,97 @@ export default async function handler(request: Request): Promise<Response> {
       }
       
       // Handle new epoch start
-      await handleApiHelperNewEpochStart(
-        phraseMonitoringData,
-        currentPhraseMetadata,
-        effectiveCurrentEpoch,
-        currentPhraseNumber,
-        activeValidatorsSet
-      );
+      // We need to pass the details explicitly since we can't fetch them inside anymore
+      // MODIFIED: handleApiHelperNewEpochStart logic needs to use `currentEpochDetails`
+      // Since we can't change the function signature easily without breaking other files (if shared), 
+      // we'll inline the logic or rely on the function using the passed values if we modified it.
+      // Wait, `handleApiHelperNewEpochStart` calls `getFirstBlockOfEpochDetails` internally in the original code.
+      // We need to modify `handleApiHelperNewEpochStart` to accept optional details or use the ones we fetched.
+      // For now, let's adapt the call site.
+      
+      console.log(`[${new Date().toISOString()}] --- Awal Epoch Baru ${effectiveCurrentEpoch} Terdeteksi (Frasa ${currentPhraseNumber}) ---`);
+      const currentTime = Date.now();
+
+      // USE PRE-FETCHED DETAILS
+      const { firstBlock: newEpochFirstBlock, sessionLength: newEpochSessionLength, epochStartTime: newEpochStartTime } = currentEpochDetails;
+      console.log(`[${new Date().toISOString()}] [DIAGNOSTIC] Epoch ${effectiveCurrentEpoch} start time: ${newEpochStartTime || 'null'}`);
+
+      if (newEpochStartTime) {
+        if (effectiveCurrentEpoch === getStartEpochForPhrase(currentPhraseNumber)) {
+          currentPhraseMetadata.phraseStartTime = newEpochStartTime;
+        }
+        if (!currentPhraseMetadata.epochs) {
+          currentPhraseMetadata.epochs = {};
+        }
+        currentPhraseMetadata.epochs[effectiveCurrentEpoch] = {
+          startTime: newEpochStartTime,
+          firstBlock: newEpochFirstBlock,
+          sessionLength: newEpochSessionLength
+        };
+        await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+      } else {
+        console.log(`[${new Date().toISOString()}] Gagal mendapatkan waktu mulai atau detail blok untuk epoch ${effectiveCurrentEpoch} (Pre-fetch empty).`);
+      }
+
+      const allKnownValidators = new Set<string>([
+        ...Object.keys(phraseMonitoringData),
+        ...Array.from(activeValidatorsSet)
+      ]);
+
+      for (const validatorAddress of allKnownValidators) {
+        const isActive = activeValidatorsSet.has(validatorAddress);
+        initializeValidatorPhraseEpochDataForApiHelper(
+          phraseMonitoringData,
+          validatorAddress,
+          currentPhraseNumber,
+          effectiveCurrentEpoch,
+          currentTime,
+          isActive ? 'AKTIF_API' : 'TIDAK_AKTIF_API',
+          'BERJALAN',
+          lastKnownNetworkEpoch
+        );
+      }
+      await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhraseNumber}_data.json`, phraseMonitoringData);
+
     } else if (lastKnownNetworkEpoch === -1) {
-      // First run - initialize current epoch
-      await handleApiHelperNewEpochStart(
-        phraseMonitoringData,
-        currentPhraseMetadata,
-        effectiveCurrentEpoch,
-        currentPhraseNumber,
-        activeValidatorsSet
-      );
+      // First run - initialize current epoch (Same logic as above, reused)
+       console.log(`[${new Date().toISOString()}] --- Awal Epoch Baru (First Run) ${effectiveCurrentEpoch} ---`);
+       const currentTime = Date.now();
+       
+       const { firstBlock, sessionLength, epochStartTime } = currentEpochDetails;
+       
+       if (epochStartTime) {
+          if (effectiveCurrentEpoch === getStartEpochForPhrase(currentPhraseNumber)) {
+            currentPhraseMetadata.phraseStartTime = epochStartTime;
+          }
+          if (!currentPhraseMetadata.epochs) currentPhraseMetadata.epochs = {};
+          currentPhraseMetadata.epochs[effectiveCurrentEpoch] = {
+            startTime: epochStartTime,
+            firstBlock: firstBlock,
+            sessionLength: sessionLength
+          };
+          await writeJSON(`data/metadata/phrase_${currentPhraseNumber}_metadata.json`, currentPhraseMetadata);
+       }
+       
+       const allKnownValidators = new Set<string>([
+        ...Object.keys(phraseMonitoringData),
+        ...Array.from(activeValidatorsSet)
+      ]);
+
+      for (const validatorAddress of allKnownValidators) {
+        const isActive = activeValidatorsSet.has(validatorAddress);
+        initializeValidatorPhraseEpochDataForApiHelper(
+          phraseMonitoringData,
+          validatorAddress,
+          currentPhraseNumber,
+          effectiveCurrentEpoch,
+          currentTime,
+          isActive ? 'AKTIF_API' : 'TIDAK_AKTIF_API',
+          'BERJALAN',
+          lastKnownNetworkEpoch
+        );
+      }
+      await writeJSON(`data/phrasedata/api_helper_phrase_${currentPhraseNumber}_data.json`, phraseMonitoringData);
     }
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;
@@ -478,7 +575,5 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[run-epoch] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    await disconnect();
   }
 }

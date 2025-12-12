@@ -1,5 +1,5 @@
 import { readJSON, writeJSON } from '../storage/storage.js';
-import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails, disconnect } from './polkadot-rpc.js';
+import { getCurrentEpoch, getActiveValidators, getFirstBlockOfEpochDetails, getAllNetworkData, getEpochWithBlockDetails } from './polkadot-rpc.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 // Global Constants (will be loaded from config)
@@ -384,6 +384,7 @@ async function runUptimeCheck(
 
 /**
  * Main combined monitor handler - runs both epoch management and uptime check
+ * ✅ NO FINALLY BLOCK - withApi() handles all cleanup automatically!
  */
 export default async function handler(request: Request): Promise<Response> {
   try {
@@ -401,18 +402,16 @@ export default async function handler(request: Request): Promise<Response> {
     }
 
     // Get current network epoch and active validators
-    const [currentNetworkEpoch, activeValidatorsList] = await Promise.all([
-      getCurrentEpoch(),
-      getActiveValidators()
-    ]);
+    // ✅ BATCH CALL - Get all data in ONE connection!
+    const networkData = await getAllNetworkData();
 
-    if (currentNetworkEpoch === -1) {
+    if (networkData.currentEpoch === -1) {
       console.log(`[${new Date().toISOString()}] Gagal mendapatkan epoch jaringan, siklus ditunda.`);
       return jsonResponse({ success: true, message: 'Failed to get network epoch' });
     }
 
-    const activeValidatorsSet = new Set<string>(activeValidatorsList);
-    const effectiveCurrentEpoch = currentNetworkEpoch;
+    const activeValidatorsSet = new Set<string>(networkData.activeValidators);
+    const effectiveCurrentEpoch = networkData.currentEpoch;
     const calculatedCurrentPhraseNumber = calculatePhraseNumber(effectiveCurrentEpoch);
 
     if (calculatedCurrentPhraseNumber < 1) {
@@ -428,12 +427,12 @@ export default async function handler(request: Request): Promise<Response> {
 
     if (currentPhraseNumber !== calculatedCurrentPhraseNumber) {
       console.log(`[${new Date().toISOString()}] --- Frasa Baru Terdeteksi (${currentPhraseNumber} -> ${calculatedCurrentPhraseNumber}) ---`);
-      
+
       // CRITICAL: Finalize all BERJALAN epochs in previous phrase before transitioning
       if (currentPhraseNumber >= 1) {
         await finalizePreviousPhrase(currentPhraseNumber);
       }
-      
+
       phraseMonitoringData = await readJSON<any>(`data/phrasedata/api_helper_phrase_${calculatedCurrentPhraseNumber}_data.json`) || {};
       currentPhraseMetadata = await readJSON<any>(`data/metadata/phrase_${calculatedCurrentPhraseNumber}_metadata.json`) || {};
       if (!currentPhraseMetadata.epochs) {
@@ -484,7 +483,7 @@ export default async function handler(request: Request): Promise<Response> {
           await handleApiHelperEpochEnd(phraseMonitoringData, epochToFinish, phraseForEpoch);
         }
       }
-      
+
       // Handle new epoch start
       await handleApiHelperNewEpochStart(
         phraseMonitoringData,
@@ -535,7 +534,9 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[run-monitor] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    await disconnect();
   }
+  // ✅ NO FINALLY BLOCK NEEDED!
+  // withApi() pattern in polkadot-rpc.ts handles all cleanup automatically!
+  // Each getCurrentEpoch(), getActiveValidators(), getFirstBlockOfEpochDetails()
+  // creates NEW connection and disconnects immediately after use!
 }

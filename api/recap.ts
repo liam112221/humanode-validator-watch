@@ -4,9 +4,12 @@ import { jsonResponse, errorResponse } from './utils/response.js';
 /**
  * API Endpoint: /api/recap
  * Returns cycle recap with statistics per week
+ * ✅ JSON ONLY - No RPC calls
  */
 export default async function handler(request: Request): Promise<Response> {
   try {
+    console.log('[recap] Request received');
+
     const constants = await readJSON<any>('data/config/global_constants.json') || {
       FIRST_EVER_PHRASE_START_EPOCH: 5450,
       PHRASE_DURATION_EPOCHS: 84,
@@ -14,8 +17,24 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS: 7200
     };
 
-    // TODO: Calculate current phrase
-    const currentPhraseNumber = 0;
+    // Determine current phrase from metadata
+    let currentPhraseNumber = 0;
+    try {
+      const metadataBlobs = await listBlobs('data/metadata/');
+      const phraseNumbers = metadataBlobs
+        .map(b => {
+          const match = b.pathname.match(/phrase_(\d+)_metadata\.json/);
+          return match ? parseInt(match[1], 10) : -1;
+        })
+        .filter(n => n >= 0);
+
+      if (phraseNumbers.length > 0) {
+        currentPhraseNumber = Math.max(...phraseNumbers);
+      }
+      console.log('[recap] Current phrase:', currentPhraseNumber);
+    } catch (e) {
+      console.error('[recap] Error determining current phrase:', e);
+    }
 
     const recap = {
       completedCycles: [] as any[],
@@ -24,6 +43,8 @@ export default async function handler(request: Request): Promise<Response> {
 
     // List all phrase data files
     const blobs = await listBlobs('data/phrasedata/');
+    console.log('[recap] Found phrasedata blobs:', blobs.length);
+
     const phraseDataFiles = blobs.filter(blob =>
       blob.pathname.includes('api_helper_phrase_') && blob.pathname.endsWith('_data.json')
     );
@@ -73,6 +94,7 @@ export default async function handler(request: Request): Promise<Response> {
           week2,
           totalValidators: validators.length
         };
+        console.log('[recap] Ongoing cycle:', phraseNum);
       } else {
         // Completed cycles
         let week1FullPass = 0;
@@ -109,6 +131,8 @@ export default async function handler(request: Request): Promise<Response> {
 
     recap.completedCycles.sort((a, b) => b.phraseNumber - a.phraseNumber);
 
+    console.log('[recap] Returning', recap.completedCycles.length, 'completed cycles');
+
     return jsonResponse({
       ...recap,
       constants,
@@ -119,3 +143,6 @@ export default async function handler(request: Request): Promise<Response> {
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
   }
 }
+
+// ✅ CRITICAL: Vercel compatibility export
+export { handler as GET, handler as POST };
