@@ -333,17 +333,10 @@ async function runUptimeCheck(
   phraseMonitoringData: any,
   activeValidators: Set<string>,
   currentEpoch: number,
-  currentPhrase: number,
-  isNewEpoch: boolean = false  // ✅ NEW: Skip uptime check on new epoch
+  currentPhrase: number
 ): Promise<boolean> {
   console.log(`[${new Date().toISOString()}] [UPTIME] Checking validator uptime for epoch ${currentEpoch}...`);
   console.log(`[${new Date().toISOString()}] [UPTIME] Ditemukan ${activeValidators.size} validator aktif di RPC.`);
-
-  // ✅ OPTIMIZATION: Skip uptime check if this is a brand new epoch (just initialized)
-  if (isNewEpoch) {
-    console.log(`[${new Date().toISOString()}] [UPTIME] Skipping uptime check - epoch just initialized.`);
-    return false;
-  }
 
   const currentTime = Date.now();
 
@@ -526,8 +519,7 @@ export default async function handler(request: Request): Promise<Response> {
       phraseMonitoringData,
       activeValidatorsSet,
       effectiveCurrentEpoch,
-      currentPhraseNumber,
-      epochTransitioned  // ✅ NEW: Pass epochTransitioned to skip uptime check on new epoch
+      currentPhraseNumber
     );
 
     lastKnownNetworkEpoch = effectiveCurrentEpoch;

@@ -1,19 +1,59 @@
 {
+  "functions": {
+    "server-vercel.ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
+      "source": "/api/dashboard",
+      "destination": "/server-vercel/dashboard"
+    },
+    {
+      "source": "/api/data-latest",
+      "destination": "/server-vercel/dataLatest"
+    },
+    {
+      "source": "/api/metadata",
+      "destination": "/server-vercel/metadata"
+    },
+    {
+      "source": "/api/network-status",
+      "destination": "/server-vercel/networkStatus"
+    },
+    {
+      "source": "/api/phrasedata",
+      "destination": "/server-vercel/phrasedata"
+    },
+    {
+      "source": "/api/recap",
+      "destination": "/server-vercel/recap"
+    },
+    {
+      "source": "/api/run-epoch",
+      "destination": "/server-vercel/runEpoch"
+    },
+    {
+      "source": "/api/run-monitor",
+      "destination": "/server-vercel/runMonitor"
+    },
+    {
+      "source": "/api/run-uptime",
+      "destination": "/server-vercel/runUptime"
+    },
+    {
       "source": "/api/validator/:address",
-      "destination": "/api/validator"
+      "destination": "/server-vercel/validator?address=:address"
+    },
+    {
+      "source": "/api/validator",
+      "destination": "/server-vercel/validator"
     },
     {
       "source": "/((?!api/).*)",
       "destination": "/"
     }
   ],
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
