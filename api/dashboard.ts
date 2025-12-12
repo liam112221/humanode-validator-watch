@@ -1,5 +1,4 @@
-import { readJSON } from '../storage/storage.js';
-import { getCurrentEpoch, disconnect } from './polkadot-rpc.js';
+import { readJSON, listBlobs } from '../storage/storage.js';
 import { jsonResponse, errorResponse } from './utils/response.js';
 
 /**
@@ -16,19 +15,24 @@ export default async function handler(request: Request): Promise<Response> {
       EPOCH_FAIL_THRESHOLD_SECONDS: 7200
     };
 
-    // Calculate current phrase based on live epoch
-    const currentEpoch = await getCurrentEpoch();
-    if (currentEpoch === -1) {
-      return errorResponse('Failed to get current epoch');
-    }
-
-    const firstEpoch = constants.FIRST_EVER_PHRASE_START_EPOCH;
-    const phraseDuration = constants.PHRASE_DURATION_EPOCHS;
+    // DETERMINE CURRENT PHRASE FROM STORAGE (NO RPC NEEDED)
     let currentPhrase = 0;
-    if (typeof firstEpoch === 'number' && typeof phraseDuration === 'number') {
-      if (currentEpoch >= firstEpoch) {
-        currentPhrase = Math.floor((currentEpoch - firstEpoch) / phraseDuration) + 1;
+    try {
+      const blobs = await listBlobs('data/metadata/');
+      // Extract phrase numbers from filenames like "phrase_5_metadata.json"
+      const phraseNumbers = blobs
+        .map(b => {
+          const match = b.pathname.match(/phrase_(\d+)_metadata\.json/);
+          return match ? parseInt(match[1], 10) : -1;
+        })
+        .filter(n => n >= 0);
+      
+      if (phraseNumbers.length > 0) {
+        currentPhrase = Math.max(...phraseNumbers);
       }
+    } catch (e) {
+      console.error('Error listing metadata files:', e);
+      // Fallback to 0 if listing fails
     }
     
     const metadata = await readJSON<any>(`data/metadata/phrase_${currentPhrase}_metadata.json`);
@@ -118,7 +122,5 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[dashboard] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    await disconnect();
   }
 }

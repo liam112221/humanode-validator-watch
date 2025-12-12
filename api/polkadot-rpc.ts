@@ -1,8 +1,3 @@
-/**
- * Polkadot RPC Helper for Vercel Serverless
- * Uses @polkadot/api over HTTP to query the Humanode chain.
- */
-
 import { ApiPromise, HttpProvider } from '@polkadot/api';
 
 const RPC_ENDPOINT = 'https://explorer-rpc-http.mainnet.stages.humanode.io';
@@ -12,26 +7,26 @@ let apiInstance: ApiPromise | null = null;
 async function getApi(): Promise<ApiPromise> {
   if (!apiInstance) {
     const provider = new HttpProvider(RPC_ENDPOINT);
-    // noInitWarn suppresses standard Polkadot connection warnings
-    apiInstance = await ApiPromise.create({ provider, noInitWarn: true });
+    
+    // Create API instance with warnings suppressed
+    const connectionPromise = ApiPromise.create({ provider, noInitWarn: true });
+    
+    // Force timeout after 10 seconds to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Polkadot RPC Connection Timeout (10s)')), 10000)
+    );
+
+    try {
+      console.log('[System] Connecting to Polkadot RPC...');
+      // Race: whichever finishes first wins
+      apiInstance = await Promise.race([connectionPromise, timeoutPromise]);
+      console.log('[System] Connected to RPC.');
+    } catch (error) {
+      console.error('[System] RPC Connection Failed:', error);
+      throw error;
+    }
   }
   return apiInstance;
-}
-
-/**
- * Disconnect the API
- */
-export async function disconnect(): Promise<void> {
-  if (apiInstance) {
-    try {
-      console.log('[System] Disconnecting RPC...');
-      await apiInstance.disconnect();
-      console.log('[System] RPC Disconnected.');
-    } catch (err) {
-      console.error('[System] Error disconnecting RPC:', err);
-    }
-    apiInstance = null;
-  }
 }
 
 /**
@@ -166,5 +161,21 @@ export async function getFirstBlockOfEpochDetails(targetEpoch: number): Promise<
   } catch (error) {
     console.error('Error in getFirstBlockOfEpochDetails:', error);
     return { firstBlock: null, sessionLength: null, epochStartTime: null };
+  }
+}
+
+/**
+ * Disconnect the API
+ */
+export async function disconnect(): Promise<void> {
+  if (apiInstance) {
+    try {
+      console.log('[System] Disconnecting RPC...');
+      await apiInstance.disconnect();
+      console.log('[System] RPC Disconnected.');
+    } catch (err) {
+      console.error('[System] Error disconnecting RPC:', err);
+    }
+    apiInstance = null;
   }
 }

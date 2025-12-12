@@ -12,7 +12,15 @@ export default async function handler(request: Request): Promise<Response> {
       AVG_BLOCK_TIME_SECONDS: 6,
     };
 
-    const sessionInfo = await getSessionProgress();
+    let sessionInfo = null;
+    try {
+      sessionInfo = await getSessionProgress();
+    } catch (err) {
+      console.error('[network-status] RPC Error:', err);
+    } finally {
+      await disconnect();
+    }
+
     if (!sessionInfo) {
       return errorResponse('Failed to get session progress');
     }
@@ -55,7 +63,5 @@ export default async function handler(request: Request): Promise<Response> {
   } catch (error) {
     console.error('[network-status] Error:', error);
     return errorResponse(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    await disconnect();
   }
 }
